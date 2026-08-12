@@ -52,14 +52,11 @@ class PartnerBot(commands.Bot):
     async def setup_hook(self) -> None:
         for cog in COGS:
             await self.load_extension(cog)
-
-        guild = discord.Object(id=self.partner_config.guild_id)
-        self.tree.copy_global_to(guild=guild)
-        synced = await self.tree.sync(guild=guild)
-        log.info("Synced %d commands to guild %s", len(synced), self.partner_config.guild_id)
+        log.info("Loaded %d cogs", len(COGS))
 
     async def on_ready(self) -> None:
         log.info("Logged in as %s", self.user)
+
         try:
             me = await self.partner_api.me()
             log.info(
@@ -68,6 +65,16 @@ class PartnerBot(commands.Bot):
         except Exception as err:
             log.error("The partner API rejected the bot's key: %s", friendly(err))
             log.error("Fix DMAREBRANDS_API_KEY in your .env, then restart.")
+
+        guild = discord.Object(id=self.partner_config.guild_id)
+        registered = await self.tree.fetch_commands(guild=guild)
+        if registered:
+            log.info("Serving %d commands in guild %s", len(registered), self.partner_config.guild_id)
+        else:
+            log.warning(
+                "No commands are registered in guild %s. Run: python scripts/register.py",
+                self.partner_config.guild_id,
+            )
 
     async def close(self) -> None:
         await self.partner_api.close()

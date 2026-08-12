@@ -82,8 +82,12 @@ have, which saves a lot of "why can't I use this".
 5. In Discord, turn on Developer Mode (User Settings → Advanced), then right-click your server
    → *Copy Server ID* for `DISCORD_GUILD_ID`, and right-click each role → *Copy Role ID*.
 
-Commands register per-guild, so they appear the moment you start the bot. No waiting an hour
-for global propagation.
+Commands register per-guild, so they appear the moment you publish them. No waiting an hour for
+global propagation.
+
+Registering is a deliberate step in both bots (`npm run register` / `python scripts/register.py`),
+not something that happens on every boot. That way a crash-looping bot never hammers Discord's
+command endpoint, and you get a `--clear` to pull commands back off a server.
 
 ## Getting an API key
 

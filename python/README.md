@@ -17,6 +17,7 @@ Fill in `.env`, then:
 
 ```bash
 python scripts/doctor.py         # checks your token, API key, roles and registration
+python scripts/register.py       # publishes the slash commands to your guild
 python -m dmarebrandsbot         # runs the bot
 ```
 
@@ -24,8 +25,18 @@ python -m dmarebrandsbot         # runs the bot
 against the application ID, calls the partner API with your key, and warns about any scope no
 configured role grants.
 
-Commands sync to your guild automatically every time the bot starts, so there is no separate
-register step.
+## Scripts
+
+| | |
+|---|---|
+| `python -m dmarebrandsbot` | Run the bot |
+| `python scripts/register.py` | Publish slash commands to `DISCORD_GUILD_ID` |
+| `python scripts/register.py --clear` | Remove every command from the guild |
+| `python scripts/doctor.py` | Check the whole setup and report problems |
+
+Re-run `register.py` whenever you change or add a command. Restarting the bot alone will not
+update what Discord shows — that is deliberate, so a crash-looping bot never hammers Discord's
+command endpoint. The bot logs a warning on start if nothing is registered.
 
 ## Running it for real
 
@@ -51,7 +62,7 @@ WantedBy=multi-user.target
 ```
 dmarebrandsbot/
   __main__.py       entrypoint, python -m dmarebrandsbot
-  bot.py            client, command tree, error handling, command sync
+  bot.py            client, command tree, error handling
   config.py         .env parsing and validation, role to scope mapping
   api.py            partner API client, retries, rate limits
   permissions.py    the requires() check decorator
@@ -59,13 +70,15 @@ dmarebrandsbot/
   confirm.py        confirmation buttons for anything that costs money
   cogs/             one cog per command group
 scripts/
+  register.py       publish or clear slash commands
   doctor.py         setup checks
 ```
 
 ## Adding a command
 
 Add a method to a cog in `dmarebrandsbot/cogs/`, decorate it with `@app_commands.command()` and
-`@requires("some.scope")`, and restart. New cogs go in the `COGS` tuple in `bot.py`.
+`@requires("some.scope")`, then run `python scripts/register.py` and restart. New cogs go in
+the `COGS` tuple in `bot.py`.
 
 Every command runs behind a command tree that already deferred the response, so reply with
 `interaction.edit_original_response(...)` rather than `interaction.response.send_message(...)`.
