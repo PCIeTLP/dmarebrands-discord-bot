@@ -19,6 +19,8 @@ already run:
 
 Both talk to the [dmarebrands Partner API](https://partners.dmarebrands.st/partners/api/docs).
 
+There is a [Telegram version](https://github.com/PCIeTLP/dmarebrands-telegram-bot) too.
+
 ## Commands
 
 | Command | What it does | Scope needed |
