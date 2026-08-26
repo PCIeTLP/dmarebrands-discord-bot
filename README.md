@@ -35,10 +35,20 @@ There is a [Telegram version](https://github.com/PCIeTLP/dmarebrands-telegram-bo
 | `/keys info <code>` | One key, including who redeemed it | `keys.read` |
 | `/keys refund <code>` | Destroy an unsold key, money back | `keys.refund` |
 | `/customers list [search] [limit]` | Everyone who redeemed your keys | `customers.read` |
-| `/customers info <id>` | One customer and their machines | `customers.read` |
+| `/customers info <ref>` | One customer and their machines, by id, username or key | `customers.read` |
 | `/hwid key <code>` | Clear their hardware lock, by key | `hwid.reset` |
-| `/hwid customer <id>` | Clear their hardware lock, by id | `hwid.reset` |
+| `/hwid customer <ref>` | Clear their hardware lock, by id, username or key | `hwid.reset` |
 | `/domains` | Your white-label domains and DNS state | `domains.read` |
+| `/status [product]` | Whether a product is up, and whether keys are frozen | `status.read` |
+| `/updates` | Latest Rust build and recent patch notes | `status.read` |
+| `/brand show` | Your branding and public page links | `brand.read` |
+| `/brand set [fields]` | Change name, colours, store link or the public toggles | `brand.write` |
+| `/tickets list [status] [search]` | Your support threads | `tickets.read` |
+| `/tickets read <ref>` | One thread with its messages | `tickets.read` |
+| `/tickets open <subject> <body>` | Open a support ticket | `tickets.write` |
+| `/tickets reply <ref> <body>` | Reply to a thread | `tickets.write` |
+| `/tickets close <ref>` | Close a thread | `tickets.write` |
+| `/activity [limit]` | Recent activity on your account | `activity.read` |
 | `/whoami` | What the bot will let *you* do | none |
 
 Anything that spends or destroys money asks for confirmation first, and shows you the exact
@@ -46,7 +56,7 @@ amount before you commit.
 
 ## Permissions
 
-Roles map to scopes through five environment variables. A member gets the **union** of every
+Roles map to scopes through six environment variables. A member gets the **union** of every
 group their roles appear in, so you can stack them.
 
 ```dotenv
@@ -54,6 +64,7 @@ ROLES_ADMIN=111111111111111111
 ROLES_KEYS=222222222222222222
 ROLES_HWID=333333333333333333,444444444444444444
 ROLES_BILLING=555555555555555555
+ROLES_SUPPORT=777777777777777777
 ROLES_READ=666666666666666666
 ```
 
@@ -63,6 +74,7 @@ ROLES_READ=666666666666666666
 | `ROLES_KEYS` | buy, refund, read keys and customers |
 | `ROLES_HWID` | reset hardware locks, read keys and customers |
 | `ROLES_BILLING` | balance and ledger |
+| `ROLES_SUPPORT` | product status, tickets, read customers |
 | `ROLES_READ` | read-only across the board |
 
 **To give a role nothing but HWID resets, put it in `ROLES_HWID` and nowhere else.** That role
@@ -100,7 +112,7 @@ You need a dmarebrands partner account. In the partner panel go to
 Not a partner yet? Ask in the [dmarebrands](https://dmarebrands.st) store.
 
 An API key is your whole partner account and **it can spend your balance**. Treat the `.env`
-like a password file. If it leaks, revoke it in the panel — that takes effect on the next
+like a password file. If it leaks, revoke it in the panel. That takes effect on the next
 request.
 
 ## Security notes

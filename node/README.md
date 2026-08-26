@@ -1,4 +1,4 @@
-# dmarebrands Discord bot — Node.js
+# dmarebrands Discord bot for Node.js
 
 discord.js v14 on Node 20 or newer. See the [main README](../README.md) for the command list
 and the permission model.
@@ -68,5 +68,5 @@ Add a module in `src/commands/` exporting `{ data, scopes, run }`, list it in
 `src/commands/index.js`, and run `npm run register`.
 
 `scopes` is either a single scope string for the whole command, or an object keyed by
-subcommand name when different subcommands need different permissions — that is how
+subcommand name when different subcommands need different permissions. That is how
 `/keys list` needs only `keys.read` while `/keys buy` needs `keys.buy`.

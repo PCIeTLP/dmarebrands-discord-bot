@@ -19,7 +19,7 @@ const FILTERS = [
 function keyLine(key) {
   const owner = key.customer ? ` · ${key.customer.username}` : "";
   const expiry = key.expires_at ? ` · expires ${stamp(key.expires_at)}` : "";
-  return `\`${key.code}\` — ${stateLabel(key.state)} · ${key.days}d ${key.product}${owner}${expiry}`;
+  return `\`${key.code}\` · ${stateLabel(key.state)} · ${key.days}d ${key.product}${owner}${expiry}`;
 }
 
 export const keys = {
@@ -92,7 +92,7 @@ export const keys = {
     try {
       const result = await api.plans();
       choices = (result.data ?? []).map((plan) => ({
-        name: `${plan.label} — ${money(plan.your_price_usd)} (${plan.id})`.slice(0, 100),
+        name: `${plan.label} - ${money(plan.your_price_usd)} (${plan.id})`.slice(0, 100),
         value: plan.id,
       }));
     } catch {
@@ -129,7 +129,7 @@ async function listKeys({ interaction, api }) {
     return;
   }
 
-  const view = embed(`Keys — ${FILTER_LABEL[filter] ?? "everything"}`, BRAND)
+  const view = embed(`Keys - ${FILTER_LABEL[filter] ?? "everything"}`, BRAND)
     .setDescription(rows.map(keyLine).join("\n"))
     .setFooter({ text: `${rows.length} shown` });
 
@@ -236,7 +236,7 @@ async function refundKey({ interaction, api, log }) {
   }
 
   const preview = embed("Confirm this refund", WARN).setDescription(
-    `\`${key.code}\` — ${key.days}d ${key.product}\n` +
+    `\`${key.code}\` · ${key.days}d ${key.product}\n` +
       `This destroys the key and puts **${money(key.cost_usd)}** back on the balance.\n` +
       "It cannot be undone and the code will stop working immediately."
   );

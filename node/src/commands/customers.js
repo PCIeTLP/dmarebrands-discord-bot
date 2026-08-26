@@ -5,7 +5,7 @@ import { confirm } from "../confirm.js";
 function machineLines(customer) {
   if (!customer.machines?.length) return "Nothing bound right now.";
   return customer.machines
-    .map((m) => `**${m.scope}** — bound ${isoStamp(m.bound_at)} · last seen ${isoStamp(m.last_seen)}`)
+    .map((m) => `**${m.scope}** · bound ${isoStamp(m.bound_at)} · last seen ${isoStamp(m.last_seen)}`)
     .join("\n");
 }
 
@@ -31,9 +31,12 @@ export const customers = {
     .addSubcommand((sub) =>
       sub
         .setName("info")
-        .setDescription("Look up one customer by id")
-        .addIntegerOption((option) =>
-          option.setName("id").setDescription("The customer id").setRequired(true).setMinValue(1)
+        .setDescription("Look up one customer by id, username or a key they redeemed")
+        .addStringOption((option) =>
+          option
+            .setName("ref")
+            .setDescription("Customer id, username, or a key code you sold them")
+            .setRequired(true)
         )
     ),
 
@@ -67,7 +70,7 @@ async function listCustomers({ interaction, api }) {
         .map((c) => {
           const state = c.active ? `active until ${stamp(c.expires_at)}` : "expired";
           const bound = c.machines?.length ? ` · ${c.machines.length} machine(s)` : "";
-          return `**${c.username}** (id ${c.id}) — ${state} · ${c.keys} key(s)${bound}`;
+          return `**${c.username}** (id ${c.id}) · ${state} · ${c.keys} key(s)${bound}`;
         })
         .join("\n")
     )
@@ -77,8 +80,8 @@ async function listCustomers({ interaction, api }) {
 }
 
 async function customerInfo({ interaction, api }) {
-  const id = interaction.options.getInteger("id", true);
-  const customer = await api.getCustomer(id);
+  const ref = interaction.options.getString("ref", true).trim();
+  const customer = await api.getCustomer(ref);
 
   const view = embed(`Customer ${customer.username}`, customer.active ? GOOD : WARN)
     .addFields(
@@ -113,9 +116,12 @@ export const hwid = {
     .addSubcommand((sub) =>
       sub
         .setName("customer")
-        .setDescription("Reset by customer id")
-        .addIntegerOption((option) =>
-          option.setName("id").setDescription("The customer id").setRequired(true).setMinValue(1)
+        .setDescription("Reset by customer id, username or a key they redeemed")
+        .addStringOption((option) =>
+          option
+            .setName("ref")
+            .setDescription("Customer id, username, or a key code you sold them")
+            .setRequired(true)
         )
     ),
 
@@ -173,8 +179,8 @@ async function resetByKey({ interaction, api, log }) {
 }
 
 async function resetByCustomer({ interaction, api, log }) {
-  const id = interaction.options.getInteger("id", true);
-  const customer = await api.getCustomer(id);
+  const ref = interaction.options.getString("ref", true).trim();
+  const customer = await api.getCustomer(ref);
 
   const preview = embed("Confirm this reset", WARN).setDescription(
     `This clears every hardware lock on **${customer.username}** (id ${customer.id}).\n` +
@@ -190,7 +196,7 @@ async function resetByCustomer({ interaction, api, log }) {
     return;
   }
 
-  const result = await api.resetByCustomer(id);
+  const result = await api.resetByCustomer(customer.id);
   await interaction.editReply({
     embeds: [
       embed("Machine reset", GOOD).setDescription(

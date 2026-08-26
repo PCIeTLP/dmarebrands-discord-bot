@@ -1,4 +1,4 @@
-# dmarebrands Discord bot — Python
+# dmarebrands Discord bot for Python
 
 discord.py v2 on Python 3.10 or newer. See the [main README](../README.md) for the command list
 and the permission model.
@@ -35,7 +35,7 @@ configured role grants.
 | `python scripts/doctor.py` | Check the whole setup and report problems |
 
 Re-run `register.py` whenever you change or add a command. Restarting the bot alone will not
-update what Discord shows — that is deliberate, so a crash-looping bot never hammers Discord's
+update what Discord shows. That is deliberate, so a crash-looping bot never hammers Discord's
 command endpoint. The bot logs a warning on start if nothing is registered.
 
 ## Running it for real

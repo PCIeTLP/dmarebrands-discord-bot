@@ -28,7 +28,7 @@ def key_line(key: dict) -> str:
     owner = f" · {customer['username']}" if customer else ""
     expiry = f" · expires {stamp(key['expires_at'])}" if key.get("expires_at") else ""
     return (
-        f"`{key['code']}` — {state_label(key.get('state'))} · "
+        f"`{key['code']}` · {state_label(key.get('state'))} · "
         f"{key.get('days')}d {key.get('product')}{owner}{expiry}"
     )
 
@@ -49,7 +49,7 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
         typed = (current or "").lower()
         choices = []
         for plan in result.get("data") or []:
-            label = f"{plan['label']} — {money(plan['your_price_usd'])} ({plan['id']})"[:100]
+            label = f"{plan['label']} - {money(plan['your_price_usd'])} ({plan['id']})"[:100]
             if typed and typed not in plan["id"].lower() and typed not in label.lower():
                 continue
             choices.append(app_commands.Choice(name=label, value=plan["id"]))
@@ -78,7 +78,7 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
             await interaction.edit_original_response(content="No keys matched that.")
             return
 
-        view = embed(f"Keys — {FILTER_LABEL.get(chosen, 'everything')}", BRAND)
+        view = embed(f"Keys - {FILTER_LABEL.get(chosen, 'everything')}", BRAND)
         view.description = "\n".join(key_line(key) for key in rows)
         view.set_footer(text=f"{len(rows)} shown")
         await interaction.edit_original_response(embed=view)
@@ -189,7 +189,7 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
 
         preview = embed("Confirm this refund", WARN)
         preview.description = (
-            f"`{key['code']}` — {key['days']}d {key['product']}\n"
+            f"`{key['code']}` · {key['days']}d {key['product']}\n"
             f"This destroys the key and puts **{money(key.get('cost_usd'))}** back on the balance.\n"
             "It cannot be undone and the code will stop working immediately."
         )
