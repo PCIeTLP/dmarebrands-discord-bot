@@ -171,11 +171,61 @@ class PartnerApi:
     async def list_customers(self, *, search: str | None = None, limit: int | None = None) -> dict[str, Any]:
         return await self.request("GET", "/customers", query={"search": search, "limit": limit})
 
-    async def get_customer(self, customer_id: int) -> dict[str, Any]:
-        return await self.request("GET", f"/customers/{customer_id}")
+    async def get_customer(self, ref: int | str) -> dict[str, Any]:
+        return await self.request("GET", f"/customers/{ref}")
 
-    async def reset_by_customer(self, customer_id: int) -> dict[str, Any]:
-        return await self.request("POST", f"/customers/{customer_id}/reset-hwid")
+    async def reset_by_customer(self, ref: int | str) -> dict[str, Any]:
+        return await self.request("POST", f"/customers/{ref}/reset-hwid")
 
     async def domains(self) -> dict[str, Any]:
         return await self.request("GET", "/domains")
+
+    async def status(self, product: str | None = None) -> dict[str, Any]:
+        return await self.request("GET", "/status", query={"product": product})
+
+    async def updates(self) -> dict[str, Any]:
+        return await self.request("GET", "/updates")
+
+    async def brand(self) -> dict[str, Any]:
+        return await self.request("GET", "/brand")
+
+    async def update_brand(self, patch: dict[str, Any]) -> dict[str, Any]:
+        return await self.request("PATCH", "/brand", body=patch)
+
+    async def list_tickets(
+        self,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
+        return await self.request(
+            "GET", "/tickets", query={"status": status, "search": search, "limit": limit}
+        )
+
+    async def create_ticket(
+        self,
+        *,
+        subject: str,
+        body: str,
+        category: str | None = None,
+        priority: str | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {"subject": subject, "body": body}
+        if category:
+            payload["category"] = category
+        if priority:
+            payload["priority"] = priority
+        return await self.request("POST", "/tickets", body=payload)
+
+    async def get_ticket(self, ref: str) -> dict[str, Any]:
+        return await self.request("GET", f"/tickets/{ref}")
+
+    async def reply_ticket(self, ref: str, body: str) -> dict[str, Any]:
+        return await self.request("POST", f"/tickets/{ref}/reply", body={"body": body})
+
+    async def close_ticket(self, ref: str) -> dict[str, Any]:
+        return await self.request("POST", f"/tickets/{ref}/close")
+
+    async def activity(self, *, limit: int | None = None, before: int | None = None) -> dict[str, Any]:
+        return await self.request("GET", "/activity", query={"limit": limit, "before": before})

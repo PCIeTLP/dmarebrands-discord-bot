@@ -95,7 +95,7 @@ class Account(commands.Cog):
             )
             checked = f" · checked {iso_stamp(domain['checked_at'])}" if domain.get("checked_at") else ""
             error = f"\n{domain['last_error']}" if domain.get("last_error") else ""
-            lines.append(f"**{domain['hostname']}** — {domain['kind']}\n{state}{checked}{error}")
+            lines.append(f"**{domain['hostname']}** · {domain['kind']}\n{state}{checked}{error}")
 
         view = embed("Your domains", BRAND)
         view.description = "\n\n".join(lines)

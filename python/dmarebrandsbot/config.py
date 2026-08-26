@@ -21,14 +21,42 @@ SCOPES = (
     "customers.read",
     "hwid.reset",
     "domains.read",
+    "status.read",
+    "brand.read",
+    "brand.write",
+    "tickets.read",
+    "tickets.write",
+    "activity.read",
 )
 
 GROUPS: dict[str, tuple[str, ...]] = {
     "ROLES_ADMIN": SCOPES,
-    "ROLES_KEYS": ("account.read", "keys.read", "keys.buy", "keys.refund", "customers.read"),
-    "ROLES_HWID": ("hwid.reset", "keys.read", "customers.read"),
+    "ROLES_KEYS": (
+        "account.read",
+        "keys.read",
+        "keys.buy",
+        "keys.refund",
+        "customers.read",
+        "status.read",
+    ),
+    "ROLES_HWID": ("hwid.reset", "keys.read", "customers.read", "status.read"),
     "ROLES_BILLING": ("account.read", "billing.read"),
-    "ROLES_READ": ("account.read", "keys.read", "customers.read", "domains.read"),
+    "ROLES_SUPPORT": (
+        "account.read",
+        "status.read",
+        "tickets.read",
+        "tickets.write",
+        "customers.read",
+    ),
+    "ROLES_READ": (
+        "account.read",
+        "keys.read",
+        "customers.read",
+        "domains.read",
+        "status.read",
+        "brand.read",
+        "activity.read",
+    ),
 }
 
 TOKEN_PREFIX = "dmarebrands_live_"

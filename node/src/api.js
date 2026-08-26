@@ -162,15 +162,55 @@ export class PartnerApi {
     return this.request("GET", "/customers", { query: { search, limit } });
   }
 
-  getCustomer(id) {
-    return this.request("GET", `/customers/${encodeURIComponent(String(id))}`);
+  getCustomer(ref) {
+    return this.request("GET", `/customers/${encodeURIComponent(String(ref))}`);
   }
 
-  resetByCustomer(id) {
-    return this.request("POST", `/customers/${encodeURIComponent(String(id))}/reset-hwid`);
+  resetByCustomer(ref) {
+    return this.request("POST", `/customers/${encodeURIComponent(String(ref))}/reset-hwid`);
   }
 
   domains() {
     return this.request("GET", "/domains");
+  }
+
+  status(product) {
+    return this.request("GET", "/status", { query: { product } });
+  }
+
+  updates() {
+    return this.request("GET", "/updates");
+  }
+
+  brand() {
+    return this.request("GET", "/brand");
+  }
+
+  updateBrand(patch) {
+    return this.request("PATCH", "/brand", { body: patch });
+  }
+
+  listTickets({ status, search, limit } = {}) {
+    return this.request("GET", "/tickets", { query: { status, search, limit } });
+  }
+
+  createTicket({ subject, body, category, priority }) {
+    return this.request("POST", "/tickets", { body: { subject, body, category, priority } });
+  }
+
+  getTicket(ref) {
+    return this.request("GET", `/tickets/${encodeURIComponent(ref)}`);
+  }
+
+  replyTicket(ref, body) {
+    return this.request("POST", `/tickets/${encodeURIComponent(ref)}/reply`, { body: { body } });
+  }
+
+  closeTicket(ref) {
+    return this.request("POST", `/tickets/${encodeURIComponent(ref)}/close`);
+  }
+
+  activity({ limit, before } = {}) {
+    return this.request("GET", "/activity", { query: { limit, before } });
   }
 }

@@ -97,7 +97,7 @@ export const domains = {
           const state = d.live ? "Live" : `Not live yet (${d.status} / ssl ${d.ssl_status})`;
           const checked = d.checked_at ? ` · checked ${isoStamp(d.checked_at)}` : "";
           const error = d.last_error ? `\n${d.last_error}` : "";
-          return `**${d.hostname}** — ${d.kind}\n${state}${checked}${error}`;
+          return `**${d.hostname}** · ${d.kind}\n${state}${checked}${error}`;
         })
         .join("\n\n")
     );

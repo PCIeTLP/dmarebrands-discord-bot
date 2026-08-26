@@ -14,7 +14,7 @@ def machine_lines(customer: dict) -> str:
     if not machines:
         return "Nothing bound right now."
     return "\n".join(
-        f"**{m['scope']}** — bound {iso_stamp(m.get('bound_at'))} · "
+        f"**{m['scope']}** · bound {iso_stamp(m.get('bound_at'))} · "
         f"last seen {iso_stamp(m.get('last_seen'))}"
         for m in machines
     )
@@ -53,7 +53,7 @@ class Customers(
             machines = customer.get("machines") or []
             bound = f" · {len(machines)} machine(s)" if machines else ""
             lines.append(
-                f"**{customer['username']}** (id {customer['id']}) — {state} · "
+                f"**{customer['username']}** (id {customer['id']}) · {state} · "
                 f"{customer.get('keys', 0)} key(s){bound}"
             )
 
@@ -62,11 +62,13 @@ class Customers(
         view.set_footer(text=f"{len(rows)} shown")
         await interaction.edit_original_response(embed=view)
 
-    @app_commands.command(name="info", description="Look up one customer by id")
-    @app_commands.describe(id="The customer id")
+    @app_commands.command(
+        name="info", description="Look up one customer by id, username or a key they redeemed"
+    )
+    @app_commands.describe(ref="Customer id, username, or a key code you sold them")
     @requires("customers.read")
-    async def info(self, interaction: discord.Interaction, id: app_commands.Range[int, 1]) -> None:
-        customer = await self.bot.partner_api.get_customer(id)
+    async def info(self, interaction: discord.Interaction, ref: str) -> None:
+        customer = await self.bot.partner_api.get_customer(ref.strip())
 
         view = embed(f"Customer {customer['username']}", GOOD if customer.get("active") else WARN)
         view.add_field(name="Id", value=str(customer["id"]), inline=True)
@@ -135,13 +137,13 @@ class Hwid(
             f"**{interaction.user}** reset HWID for {customer['username']} via key `{clean}`"
         )
 
-    @app_commands.command(name="customer", description="Reset by customer id")
-    @app_commands.describe(id="The customer id")
+    @app_commands.command(
+        name="customer", description="Reset by customer id, username or a key they redeemed"
+    )
+    @app_commands.describe(ref="Customer id, username, or a key code you sold them")
     @requires("hwid.reset")
-    async def by_customer(
-        self, interaction: discord.Interaction, id: app_commands.Range[int, 1]
-    ) -> None:
-        customer = await self.bot.partner_api.get_customer(id)
+    async def by_customer(self, interaction: discord.Interaction, ref: str) -> None:
+        customer = await self.bot.partner_api.get_customer(ref.strip())
 
         preview = embed("Confirm this reset", WARN)
         preview.description = (
@@ -155,7 +157,7 @@ class Hwid(
             await interaction.edit_original_response(embed=cancelled, view=None)
             return
 
-        result = await self.bot.partner_api.reset_by_customer(id)
+        result = await self.bot.partner_api.reset_by_customer(customer["id"])
         cleared = result.get("cleared", 0)
 
         done = embed("Machine reset", GOOD)

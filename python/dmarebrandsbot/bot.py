@@ -18,6 +18,9 @@ COGS = (
     "dmarebrandsbot.cogs.billing",
     "dmarebrandsbot.cogs.keys",
     "dmarebrandsbot.cogs.customers",
+    "dmarebrandsbot.cogs.status",
+    "dmarebrandsbot.cogs.brand",
+    "dmarebrandsbot.cogs.support",
 )
 
 

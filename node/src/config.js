@@ -11,14 +11,29 @@ export const SCOPES = [
   "customers.read",
   "hwid.reset",
   "domains.read",
+  "status.read",
+  "brand.read",
+  "brand.write",
+  "tickets.read",
+  "tickets.write",
+  "activity.read",
 ];
 
 export const GROUPS = {
   ROLES_ADMIN: SCOPES,
-  ROLES_KEYS: ["account.read", "keys.read", "keys.buy", "keys.refund", "customers.read"],
-  ROLES_HWID: ["hwid.reset", "keys.read", "customers.read"],
+  ROLES_KEYS: ["account.read", "keys.read", "keys.buy", "keys.refund", "customers.read", "status.read"],
+  ROLES_HWID: ["hwid.reset", "keys.read", "customers.read", "status.read"],
   ROLES_BILLING: ["account.read", "billing.read"],
-  ROLES_READ: ["account.read", "keys.read", "customers.read", "domains.read"],
+  ROLES_SUPPORT: ["account.read", "status.read", "tickets.read", "tickets.write", "customers.read"],
+  ROLES_READ: [
+    "account.read",
+    "keys.read",
+    "customers.read",
+    "domains.read",
+    "status.read",
+    "brand.read",
+    "activity.read",
+  ],
 };
 
 class ConfigError extends Error {}
@@ -76,7 +91,7 @@ function buildRoleScopes() {
 
   if (!total) {
     throw new ConfigError(
-      "No roles configured. Set at least one of ROLES_ADMIN, ROLES_KEYS, ROLES_HWID, ROLES_BILLING or ROLES_READ."
+      "No roles configured. Set at least one of ROLES_ADMIN, ROLES_KEYS, ROLES_HWID, ROLES_BILLING, ROLES_SUPPORT or ROLES_READ."
     );
   }
 
