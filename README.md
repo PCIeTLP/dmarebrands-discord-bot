@@ -40,7 +40,7 @@ There is a [Telegram version](https://github.com/PCIeTLP/dmarebrands-telegram-bo
 | `/hwid customer <ref>` | Clear their hardware lock, by id, username or key | `hwid.reset` |
 | `/domains` | Your white-label domains and DNS state | `domains.read` |
 | `/status [product]` | Whether a product is up, and whether keys are frozen | `status.read` |
-| `/updates` | Latest Rust build and recent patch notes | `status.read` |
+| `/updates [product]` | Latest build and recent patch notes for rust or wardogs | `status.read` |
 | `/brand show` | Your branding and public page links | `brand.read` |
 | `/brand set [fields]` | Change name, colours, store link or the public toggles | `brand.write` |
 | `/tickets list [status] [search]` | Your support threads | `tickets.read` |
