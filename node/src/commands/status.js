@@ -57,14 +57,18 @@ export const status = {
 export const updates = {
   data: new SlashCommandBuilder()
     .setName("updates")
-    .setDescription("Show the latest Rust build and the recent patch notes"),
+    .setDescription("Show the latest game build and the recent patch notes")
+    .addStringOption((o) =>
+      o.setName("product").setDescription("Which game, rust or wardogs. Defaults to rust")
+    ),
   scopes: "status.read",
   async run({ interaction, api }) {
-    const result = await api.updates();
+    const wanted = interaction.options.getString("product") ?? undefined;
+    const result = await api.updates(wanted);
     const build = result.current_build;
     const notes = (result.updates ?? []).slice(0, 5);
 
-    const view = embed("Game updates", BRAND);
+    const view = embed(`Game updates · ${result.game ?? wanted ?? "rust"}`, BRAND);
     view.setDescription(
       build
         ? `Current build **${build.buildid}**${build.at ? ` · ${isoStamp(build.at)}` : ""}` +

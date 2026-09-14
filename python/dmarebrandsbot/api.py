@@ -183,8 +183,8 @@ class PartnerApi:
     async def status(self, product: str | None = None) -> dict[str, Any]:
         return await self.request("GET", "/status", query={"product": product})
 
-    async def updates(self) -> dict[str, Any]:
-        return await self.request("GET", "/updates")
+    async def updates(self, product: str | None = None) -> dict[str, Any]:
+        return await self.request("GET", "/updates", query={"product": product})
 
     async def brand(self) -> dict[str, Any]:
         return await self.request("GET", "/brand")

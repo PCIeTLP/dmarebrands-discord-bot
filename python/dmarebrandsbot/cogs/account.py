@@ -47,7 +47,7 @@ class Account(commands.Cog):
 
         view = embed("Plans", BRAND)
         view.description = "\n\n".join(
-            f"**{plan['label']}** `{plan['id']}`\n"
+            f"**{plan['product']} · {plan['label']}** `{plan['id']}`\n"
             f"{plan['days']} days · {money(plan['your_price_usd'])} for you · "
             f"list {money(plan['list_price_usd'])} · you save {money(plan['saving_usd'])}"
             for plan in rows

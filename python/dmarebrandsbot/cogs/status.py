@@ -56,14 +56,15 @@ class Status(commands.Cog):
         view.description = "\n\n".join(blocks)
         await interaction.edit_original_response(embed=view)
 
-    @app_commands.command(description="Show the latest Rust build and the recent patch notes")
+    @app_commands.command(description="Show the latest game build and the recent patch notes")
+    @app_commands.describe(product="Which game, rust or wardogs. Defaults to rust")
     @requires("status.read")
-    async def updates(self, interaction: discord.Interaction) -> None:
-        result = await self.bot.partner_api.updates()
+    async def updates(self, interaction: discord.Interaction, product: str | None = None) -> None:
+        result = await self.bot.partner_api.updates(product)
         build = result.get("current_build")
         notes = (result.get("updates") or [])[:5]
 
-        view = embed("Game updates", BRAND)
+        view = embed(f"Game updates · {result.get('game') or product or 'rust'}", BRAND)
         if build:
             seen = f" · {iso_stamp(build['at'])}" if build.get("at") else ""
             gap = result.get("average_gap_days")

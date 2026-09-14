@@ -9,6 +9,17 @@ from ..formatting import BRAND, GOOD, WARN, embed, iso_stamp, money, stamp
 from ..permissions import requires
 
 
+def product_lines(customer: dict) -> str:
+    rows = customer.get("products") or []
+    if not rows:
+        return "none"
+    return "\n".join(
+        f"{p['product']} · "
+        + (f"active until {stamp(p['expires_at'])}" if p.get("active") else "expired")
+        for p in rows
+    )
+
+
 def machine_lines(customer: dict) -> str:
     machines = customer.get("machines") or []
     if not machines:
@@ -83,6 +94,7 @@ class Customers(
             inline=True,
         )
         view.add_field(name="Joined", value=iso_stamp(customer.get("created_at")), inline=True)
+        view.add_field(name="Products", value=product_lines(customer), inline=False)
         view.add_field(name="Machines", value=machine_lines(customer), inline=False)
 
         await interaction.edit_original_response(embed=view)

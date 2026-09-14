@@ -178,8 +178,8 @@ export class PartnerApi {
     return this.request("GET", "/status", { query: { product } });
   }
 
-  updates() {
-    return this.request("GET", "/updates");
+  updates(product) {
+    return this.request("GET", "/updates", { query: { product } });
   }
 
   brand() {

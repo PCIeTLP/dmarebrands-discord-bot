@@ -2,6 +2,14 @@ import { SlashCommandBuilder } from "discord.js";
 import { BRAND, GOOD, WARN, embed, isoStamp, stamp } from "../format.js";
 import { confirm } from "../confirm.js";
 
+function productLines(customer) {
+  const list = customer.products ?? [];
+  if (!list.length) return "none";
+  return list
+    .map((p) => `${p.product} · ${p.active ? `active until ${stamp(p.expires_at)}` : "expired"}`)
+    .join("\n");
+}
+
 function machineLines(customer) {
   if (!customer.machines?.length) return "Nothing bound right now.";
   return customer.machines
@@ -96,7 +104,10 @@ async function customerInfo({ interaction, api }) {
       },
       { name: "Joined", value: isoStamp(customer.created_at), inline: true }
     )
-    .addFields({ name: "Machines", value: machineLines(customer) });
+    .addFields(
+      { name: "Products", value: productLines(customer) },
+      { name: "Machines", value: machineLines(customer) }
+    );
 
   await interaction.editReply({ embeds: [view] });
 }

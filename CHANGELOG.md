@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-13
+
+Wardogs is public, so the bot stops assuming every game is Rust.
+
+- `/updates [product]` takes a game, `rust` or `wardogs`, and says which one it is showing.
+- `/plans` prefixes every row with its product, so the Rust and Wardogs month plans no
+  longer look identical.
+- `/customers` and `/customer` now carry a `products` list from the API, one entry per
+  product you sold that customer, alongside the summary fields.
+
 ## 2026-08-26
 
 Caught the bot up with the six endpoint groups the Partner API just gained.
