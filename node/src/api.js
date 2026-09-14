@@ -42,7 +42,7 @@ export class PartnerApi {
     this.resetIn = null;
   }
 
-  async request(method, path, { query, body } = {}) {
+  async request(method, path, { query, body, idempotent = false } = {}) {
     const url = new URL(`${this.apiBase}${path}`);
     if (query) {
       for (const [key, value] of Object.entries(query)) {
@@ -98,7 +98,7 @@ export class PartnerApi {
           continue;
         }
 
-        if (res.status >= 500 && attempt < MAX_ATTEMPTS && method === "GET") {
+        if (res.status >= 500 && attempt < MAX_ATTEMPTS && (method === "GET" || idempotent)) {
           await sleep(attempt * 500);
           continue;
         }
@@ -107,7 +107,7 @@ export class PartnerApi {
       } catch (err) {
         if (err instanceof ApiError) throw err;
         lastError = err;
-        const retryable = method === "GET" && attempt < MAX_ATTEMPTS;
+        const retryable = (method === "GET" || idempotent) && attempt < MAX_ATTEMPTS;
         if (!retryable) throw err;
         await sleep(attempt * 500);
       } finally {
@@ -142,8 +142,11 @@ export class PartnerApi {
     return this.request("GET", "/keys", { query: { filter, search, limit } });
   }
 
-  buyKeys(plan, count) {
-    return this.request("POST", "/keys", { body: { plan, count } });
+  buyKeys(plan, count, reference) {
+    return this.request("POST", "/keys", {
+      body: { plan, count, ...(reference ? { reference } : {}) },
+      idempotent: Boolean(reference),
+    });
   }
 
   getKey(code) {

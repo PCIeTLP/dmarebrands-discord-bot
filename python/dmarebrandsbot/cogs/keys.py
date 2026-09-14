@@ -128,7 +128,7 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
             await interaction.edit_original_response(embed=cancelled, view=None)
             return
 
-        bought = await self.bot.partner_api.buy_keys(plan, count)
+        bought = await self.bot.partner_api.buy_keys(plan, count, f"discord:{interaction.id}")
         codes = [key["code"] for key in bought.get("data") or []]
 
         done = embed(f"Bought {len(codes)} key{'' if len(codes) == 1 else 's'}", GOOD)

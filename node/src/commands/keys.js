@@ -181,7 +181,7 @@ async function buyKeys({ interaction, api, log }) {
     return;
   }
 
-  const bought = await api.buyKeys(plan, count);
+  const bought = await api.buyKeys(plan, count, `discord:${interaction.id}`);
   const codes = (bought.data ?? []).map((k) => k.code);
 
   const done = embed(`Bought ${codes.length} key${codes.length === 1 ? "" : "s"}`, GOOD)
