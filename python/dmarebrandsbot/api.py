@@ -68,6 +68,7 @@ class PartnerApi:
         *,
         query: dict[str, Any] | None = None,
         body: dict[str, Any] | None = None,
+        idempotent: bool = False,
     ) -> dict[str, Any]:
         params = {}
         for key, value in (query or {}).items():
@@ -114,7 +115,7 @@ class PartnerApi:
                         await asyncio.sleep(min(max(retry_after, 1), 30))
                         continue
 
-                    if res.status >= 500 and attempt < MAX_ATTEMPTS and method == "GET":
+                    if res.status >= 500 and attempt < MAX_ATTEMPTS and (method == "GET" or idempotent):
                         await asyncio.sleep(attempt * 0.5)
                         continue
 
@@ -124,7 +125,7 @@ class PartnerApi:
                 raise
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
                 last_error = err
-                if method != "GET" or attempt >= MAX_ATTEMPTS:
+                if (method != "GET" and not idempotent) or attempt >= MAX_ATTEMPTS:
                     raise
                 await asyncio.sleep(attempt * 0.5)
 
@@ -156,8 +157,11 @@ class PartnerApi:
     ) -> dict[str, Any]:
         return await self.request("GET", "/keys", query={"filter": filter, "search": search, "limit": limit})
 
-    async def buy_keys(self, plan: str, count: int) -> dict[str, Any]:
-        return await self.request("POST", "/keys", body={"plan": plan, "count": count})
+    async def buy_keys(self, plan: str, count: int, reference: str | None = None) -> dict[str, Any]:
+        body: dict[str, Any] = {"plan": plan, "count": count}
+        if reference:
+            body["reference"] = reference
+        return await self.request("POST", "/keys", body=body, idempotent=bool(reference))
 
     async def get_key(self, code: str) -> dict[str, Any]:
         return await self.request("GET", f"/keys/{code}")

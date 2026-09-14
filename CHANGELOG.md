@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-14
+
+Buying is now safe to retry.
+
+- `/keys buy` sends the interaction id as the `reference` on `POST /keys`, which the API
+  now treats as an idempotency key. If the connection drops after the batch was minted,
+  the bot retries and gets the same keys back instead of a second batch and a second
+  charge. You will see `idempotent-replayed: true` on those responses if you look.
+- Because of that, the client retries `POST /keys` on 5xx and network errors the same way
+  it already retried GETs. Nothing else changed for other commands.
+
 ## 2026-09-13
 
 Wardogs is public, so the bot stops assuming every game is Rust.
