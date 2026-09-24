@@ -20,7 +20,12 @@ async function logAction(text) {
 
 async function handleAutocomplete(interaction) {
   const command = BY_NAME.get(interaction.commandName);
-  if (!command?.autocomplete) {
+  const needed = command ? scopeFor(command, interaction.options.getSubcommand(false) ?? undefined) : null;
+  if (
+    !command?.autocomplete ||
+    interaction.guildId !== config.guildId ||
+    (needed && !allows(scopesFor(interaction.member, config.roleScopes), needed))
+  ) {
     await interaction.respond([]).catch(() => {});
     return;
   }

@@ -216,5 +216,5 @@ async function resetByCustomer({ interaction, api, log }) {
     ],
     components: [],
   });
-  await log(`**${interaction.user.tag}** reset HWID for ${customer.username} (id ${id})`);
+  await log(`**${interaction.user.tag}** reset HWID for ${customer.username} (id ${customer.id})`);
 }

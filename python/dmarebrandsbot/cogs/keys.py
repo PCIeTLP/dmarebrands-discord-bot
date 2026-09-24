@@ -38,6 +38,7 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
         self.bot = bot
         super().__init__()
 
+    @requires("keys.buy")
     async def plan_autocomplete(
         self, interaction: discord.Interaction, current: str
     ) -> list[app_commands.Choice[str]]:

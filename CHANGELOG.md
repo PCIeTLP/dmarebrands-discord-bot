@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-24
+
+Buying waits out slow purchases, and plan autocomplete respects roles.
+
+- `/keys buy` now waits out a purchase that is still running. The API answers a retry that
+  arrives before the first request finishes with `409 in_progress`, and the bot resends the
+  same `reference` after the `Retry-After` it gets (up to a minute) instead of reporting a
+  failure. If it is still unresolved after that, the bot says so and points at `/keys list`
+  rather than inviting a second purchase.
+- Plan autocomplete on `/keys buy` checks the same server and role scopes as the command.
+  Before, a member without the keys role, or another server entirely, could list your plan
+  ids and prices through it.
+- The Python client URL-encodes key codes, customer refs and ticket refs in request paths,
+  so a customer named `a?b` or `../stats` reaches the right endpoint. Node already did.
+- A machine reset by customer logged the wrong variable afterwards: Node threw after the
+  reset had gone through, and Python printed a builtin in place of the customer id.
+
 ## 2026-09-14
 
 Buying is now safe to retry.

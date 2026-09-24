@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from ..confirm import ask
-from ..formatting import BRAND, GOOD, WARN, embed, iso_stamp, money, stamp
+from ..formatting import BRAND, GOOD, WARN, embed, iso_stamp, stamp
 from ..permissions import requires
 
 
@@ -178,7 +178,7 @@ class Hwid(
         )
         await interaction.edit_original_response(embed=done, view=None)
         await self.bot.log_action(
-            f"**{interaction.user}** reset HWID for {customer['username']} (id {id})"
+            f"**{interaction.user}** reset HWID for {customer['username']} (id {customer['id']})"
         )
 
 

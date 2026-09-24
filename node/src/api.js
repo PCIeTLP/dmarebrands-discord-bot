@@ -1,13 +1,15 @@
 const TIMEOUT_MS = 15_000;
 const MAX_ATTEMPTS = 3;
+const IN_PROGRESS_WAIT_MS = 60_000;
 
 export class ApiError extends Error {
-  constructor(status, code, message, requestId) {
+  constructor(status, code, message, requestId, retryAfter) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.requestId = requestId ?? null;
+    this.retryAfter = retryAfter ?? null;
   }
 }
 
@@ -17,6 +19,7 @@ const FRIENDLY = {
   forbidden: "That partner account is no longer active.",
   not_found: "Nothing matched that.",
   conflict: "That is not possible in the current state.",
+  in_progress: "That purchase is still going through. Check /keys list in a minute before buying again.",
   invalid_request: "One of the values was out of range.",
   rate_limited: "The API is rate limiting us. Try again in a moment.",
   server_error: "The API had a problem. Try again shortly.",
@@ -24,6 +27,7 @@ const FRIENDLY = {
 
 export function friendly(err) {
   if (err instanceof ApiError) {
+    if (err.code === "in_progress") return FRIENDLY.in_progress;
     return err.message || FRIENDLY[err.code] || "The request failed.";
   }
   if (err instanceof Error && err.name === "AbortError") {
@@ -103,7 +107,7 @@ export class PartnerApi {
           continue;
         }
 
-        throw new ApiError(res.status, code, message, requestId);
+        throw new ApiError(res.status, code, message, requestId, Number(res.headers.get("retry-after")) || null);
       } catch (err) {
         if (err instanceof ApiError) throw err;
         lastError = err;
@@ -142,11 +146,19 @@ export class PartnerApi {
     return this.request("GET", "/keys", { query: { filter, search, limit } });
   }
 
-  buyKeys(plan, count, reference) {
-    return this.request("POST", "/keys", {
-      body: { plan, count, ...(reference ? { reference } : {}) },
-      idempotent: Boolean(reference),
-    });
+  async buyKeys(plan, count, reference) {
+    const giveUpAt = Date.now() + IN_PROGRESS_WAIT_MS;
+    for (;;) {
+      try {
+        return await this.request("POST", "/keys", {
+          body: { plan, count, ...(reference ? { reference } : {}) },
+          idempotent: Boolean(reference),
+        });
+      } catch (err) {
+        if (!(err instanceof ApiError) || err.code !== "in_progress" || Date.now() >= giveUpAt) throw err;
+        await sleep(Math.min(Math.max(err.retryAfter ?? 2, 1), 10) * 1000);
+      }
+    }
   }
 
   getKey(code) {
