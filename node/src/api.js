@@ -19,15 +19,17 @@ const FRIENDLY = {
   forbidden: "That partner account is no longer active.",
   not_found: "Nothing matched that.",
   conflict: "That is not possible in the current state.",
-  in_progress: "That purchase is still going through. Check /keys list in a minute before buying again.",
   invalid_request: "One of the values was out of range.",
   rate_limited: "The API is rate limiting us. Try again in a moment.",
   server_error: "The API had a problem. Try again shortly.",
 };
 
+// Shown in place of the API's own text, so the user checks before buying a second time.
+const IN_PROGRESS = "That purchase is still going through. Check /keys list in a minute before buying again.";
+
 export function friendly(err) {
   if (err instanceof ApiError) {
-    if (err.code === "in_progress") return FRIENDLY.in_progress;
+    if (err.code === "in_progress") return IN_PROGRESS;
     return err.message || FRIENDLY[err.code] || "The request failed.";
   }
   if (err instanceof Error && err.name === "AbortError") {
@@ -37,6 +39,19 @@ export function friendly(err) {
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Retry-After in seconds. HTTP dates and junk count as missing.
+function seconds(header) {
+  const value = Number(header);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+// URL parsing collapses "." and ".." path segments, which would send the request to another endpoint.
+function part(value) {
+  const text = String(value);
+  if (text === "" || text === "." || text === "..") throw new ApiError(404, "not_found", FRIENDLY.not_found);
+  return encodeURIComponent(text);
+}
 
 export class PartnerApi {
   constructor({ apiKey, apiBase }) {
@@ -80,6 +95,7 @@ export class PartnerApi {
         if (limitReset !== null) this.resetIn = Number(limitReset);
 
         const requestId = res.headers.get("x-request-id");
+        const retryAfter = seconds(res.headers.get("retry-after"));
         const text = await res.text();
 
         let payload = null;
@@ -97,8 +113,7 @@ export class PartnerApi {
         const message = payload?.error?.message ?? `HTTP ${res.status}`;
 
         if (res.status === 429 && attempt < MAX_ATTEMPTS) {
-          const retryAfter = Number(res.headers.get("retry-after") ?? 2);
-          await sleep(Math.min(Math.max(retryAfter, 1), 30) * 1000);
+          await sleep(Math.min(Math.max(retryAfter ?? 2, 1), 30) * 1000);
           continue;
         }
 
@@ -107,7 +122,7 @@ export class PartnerApi {
           continue;
         }
 
-        throw new ApiError(res.status, code, message, requestId, Number(res.headers.get("retry-after")) || null);
+        throw new ApiError(res.status, code, message, requestId, retryAfter);
       } catch (err) {
         if (err instanceof ApiError) throw err;
         lastError = err;
@@ -147,7 +162,8 @@ export class PartnerApi {
   }
 
   async buyKeys(plan, count, reference) {
-    const giveUpAt = Date.now() + IN_PROGRESS_WAIT_MS;
+    const giveUpAt = performance.now() + IN_PROGRESS_WAIT_MS;
+    let inProgress = null;
     for (;;) {
       try {
         return await this.request("POST", "/keys", {
@@ -155,22 +171,30 @@ export class PartnerApi {
           idempotent: Boolean(reference),
         });
       } catch (err) {
-        if (!(err instanceof ApiError) || err.code !== "in_progress" || Date.now() >= giveUpAt) throw err;
-        await sleep(Math.min(Math.max(err.retryAfter ?? 2, 1), 10) * 1000);
+        if (err instanceof ApiError && err.code === "in_progress") {
+          const left = giveUpAt - performance.now();
+          if (left <= 0) throw err;
+          inProgress = err;
+          await sleep(Math.min(Math.min(Math.max(err.retryAfter ?? 2, 1), 10) * 1000, left));
+          continue;
+        }
+        // Once the API has said this purchase is running, a timeout or server error leaves it unresolved.
+        const answered = err instanceof ApiError && err.status < 500 && err.status !== 429;
+        throw inProgress && !answered ? inProgress : err;
       }
     }
   }
 
   getKey(code) {
-    return this.request("GET", `/keys/${encodeURIComponent(code)}`);
+    return this.request("GET", `/keys/${part(code)}`);
   }
 
   refundKey(code) {
-    return this.request("DELETE", `/keys/${encodeURIComponent(code)}`);
+    return this.request("DELETE", `/keys/${part(code)}`);
   }
 
   resetByKey(code) {
-    return this.request("POST", `/keys/${encodeURIComponent(code)}/reset-hwid`);
+    return this.request("POST", `/keys/${part(code)}/reset-hwid`);
   }
 
   listCustomers({ search, limit } = {}) {
@@ -178,11 +202,11 @@ export class PartnerApi {
   }
 
   getCustomer(ref) {
-    return this.request("GET", `/customers/${encodeURIComponent(String(ref))}`);
+    return this.request("GET", `/customers/${part(ref)}`);
   }
 
   resetByCustomer(ref) {
-    return this.request("POST", `/customers/${encodeURIComponent(String(ref))}/reset-hwid`);
+    return this.request("POST", `/customers/${part(ref)}/reset-hwid`);
   }
 
   domains() {
@@ -214,15 +238,15 @@ export class PartnerApi {
   }
 
   getTicket(ref) {
-    return this.request("GET", `/tickets/${encodeURIComponent(ref)}`);
+    return this.request("GET", `/tickets/${part(ref)}`);
   }
 
   replyTicket(ref, body) {
-    return this.request("POST", `/tickets/${encodeURIComponent(ref)}/reply`, { body: { body } });
+    return this.request("POST", `/tickets/${part(ref)}/reply`, { body: { body } });
   }
 
   closeTicket(ref) {
-    return this.request("POST", `/tickets/${encodeURIComponent(ref)}/close`);
+    return this.request("POST", `/tickets/${part(ref)}/close`);
   }
 
   activity({ limit, before } = {}) {

@@ -18,14 +18,16 @@ async function logAction(text) {
   } catch {}
 }
 
+// The one scope check for an interaction, shared by commands and their autocomplete.
+function access(interaction, command) {
+  const granted = scopesFor(interaction.member, config.roleScopes);
+  const needed = scopeFor(command, interaction.options.getSubcommand(false) ?? undefined);
+  return { granted, needed, ok: !needed || allows(granted, needed) };
+}
+
 async function handleAutocomplete(interaction) {
   const command = BY_NAME.get(interaction.commandName);
-  const needed = command ? scopeFor(command, interaction.options.getSubcommand(false) ?? undefined) : null;
-  if (
-    !command?.autocomplete ||
-    interaction.guildId !== config.guildId ||
-    (needed && !allows(scopesFor(interaction.member, config.roleScopes), needed))
-  ) {
+  if (!command?.autocomplete || interaction.guildId !== config.guildId || !access(interaction, command).ok) {
     await interaction.respond([]).catch(() => {});
     return;
   }
@@ -48,11 +50,9 @@ async function handleCommand(interaction) {
     return;
   }
 
-  const granted = scopesFor(interaction.member, config.roleScopes);
-  const subcommand = interaction.options.getSubcommand(false) ?? undefined;
-  const needed = scopeFor(command, subcommand);
+  const { granted, needed, ok } = access(interaction, command);
 
-  if (needed && !allows(granted, needed)) {
+  if (!ok) {
     await interaction.reply({
       content: deniedMessage(needed),
       flags: MessageFlags.Ephemeral,

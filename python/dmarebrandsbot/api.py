@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import quote
 
 import aiohttp
+from yarl import URL
 
 TIMEOUT_SECONDS = 15
 MAX_ATTEMPTS = 3
@@ -17,11 +18,13 @@ FRIENDLY = {
     "forbidden": "That partner account is no longer active.",
     "not_found": "Nothing matched that.",
     "conflict": "That is not possible in the current state.",
-    "in_progress": "That purchase is still going through. Check /keys list in a minute before buying again.",
     "invalid_request": "One of the values was out of range.",
     "rate_limited": "The API is rate limiting us. Try again in a moment.",
     "server_error": "The API had a problem. Try again shortly.",
 }
+
+# Shown in place of the API's own text, so the user checks before buying a second time.
+IN_PROGRESS = "That purchase is still going through. Check /keys list in a minute before buying again."
 
 
 class ApiError(Exception):
@@ -42,13 +45,36 @@ class ApiError(Exception):
 
 
 def _part(value: Any) -> str:
-    return quote(str(value), safe="")
+    text = str(value)
+    if text in ("", ".", ".."):
+        # URL parsing collapses these segments, which would send the request to another endpoint.
+        raise ApiError(404, "not_found", FRIENDLY["not_found"])
+    return quote(text, safe="")
+
+
+def _seconds(header: str | None) -> float | None:
+    """Retry-After in seconds. HTTP dates and junk count as missing."""
+    try:
+        value = float(header or "")
+    except ValueError:
+        return None
+    return value if 0 < value < float("inf") else None
+
+
+def _count(header: str | None, current: int | None) -> int | None:
+    """Rate limit counters. Junk keeps the last value instead of failing the request."""
+    if header is None:
+        return current
+    try:
+        return int(float(header))
+    except (ValueError, OverflowError):
+        return current
 
 
 def friendly(err: BaseException) -> str:
     if isinstance(err, ApiError):
         if err.code == "in_progress":
-            return FRIENDLY["in_progress"]
+            return IN_PROGRESS
         return err.message or FRIENDLY.get(err.code, "The request failed.")
     if isinstance(err, asyncio.TimeoutError):
         return "The API did not respond in time. Try again."
@@ -95,21 +121,20 @@ class PartnerApi:
             params[key] = str(value)
 
         session = await self.session()
-        url = f"{self.api_base}{path}"
+        # _part() already percent-encoded the path, so keep yarl from decoding ";", "&", "=" and the like.
+        url = URL(f"{URL(self.api_base)}{path}", encoded=True)
         last_error: BaseException | None = None
 
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
                 async with session.request(method, url, params=params, json=body) as res:
-                    remaining = res.headers.get("x-ratelimit-remaining")
-                    if remaining is not None:
-                        self.remaining = int(remaining)
-                    reset = res.headers.get("x-ratelimit-reset")
-                    if reset is not None:
-                        self.reset_in = int(reset)
+                    self.remaining = _count(res.headers.get("x-ratelimit-remaining"), self.remaining)
+                    self.reset_in = _count(res.headers.get("x-ratelimit-reset"), self.reset_in)
 
                     request_id = res.headers.get("x-request-id")
-                    text = await res.text()
+                    retry_after = _seconds(res.headers.get("retry-after"))
+                    # Decode like Node does, so an error page in another charset still reads as an HTTP error.
+                    text = await res.text(errors="replace")
 
                     payload: dict[str, Any] | None = None
                     if text:
@@ -129,18 +154,14 @@ class PartnerApi:
                     message = error.get("message", f"HTTP {res.status}")
 
                     if res.status == 429 and attempt < MAX_ATTEMPTS:
-                        retry_after = int(res.headers.get("retry-after", "2") or 2)
-                        await asyncio.sleep(min(max(retry_after, 1), 30))
+                        await asyncio.sleep(min(max(retry_after or 2, 1), 30))
                         continue
 
                     if res.status >= 500 and attempt < MAX_ATTEMPTS and (method == "GET" or idempotent):
                         await asyncio.sleep(attempt * 0.5)
                         continue
 
-                    wait_hint = res.headers.get("retry-after") or ""
-                    raise ApiError(
-                        res.status, code, message, request_id, float(wait_hint) if wait_hint.isdigit() else None
-                    )
+                    raise ApiError(res.status, code, message, request_id, retry_after)
 
             except ApiError:
                 raise
@@ -183,13 +204,27 @@ class PartnerApi:
         if reference:
             body["reference"] = reference
         give_up_at = time.monotonic() + IN_PROGRESS_WAIT_SECONDS
+        in_progress: ApiError | None = None
         while True:
             try:
                 return await self.request("POST", "/keys", body=body, idempotent=bool(reference))
             except ApiError as err:
-                if err.code != "in_progress" or time.monotonic() >= give_up_at:
+                if err.code == "in_progress":
+                    left = give_up_at - time.monotonic()
+                    if left <= 0:
+                        raise
+                    in_progress = err
+                    await asyncio.sleep(min(max(err.retry_after or 2, 1), 10, left))
+                    continue
+                # Once the API has said this purchase is running, a server error leaves it unresolved.
+                if in_progress is None or (err.status < 500 and err.status != 429):
                     raise
-                await asyncio.sleep(min(max(err.retry_after or 2, 1), 10))
+                raise in_progress from err
+            except Exception as err:
+                # Anything but an answered ApiError leaves a running purchase unresolved, as in Node.
+                if in_progress is None:
+                    raise
+                raise in_progress from err
 
     async def get_key(self, code: str) -> dict[str, Any]:
         return await self.request("GET", f"/keys/{_part(code)}")

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-13
+
+A purchase that is still going through stays reported that way when the network acts up.
+
+- Once the API has answered a `/keys buy` with `in_progress`, a later timeout, dropped
+  connection, 5xx, 429 or unreadable error page no longer reads as "try again". The bot
+  says the purchase is still going through and to check `/keys list` before buying again.
+  A definite answer such as `insufficient_balance` still comes through as itself.
+- The wait for an in-progress purchase stops at its minute instead of sleeping past it.
+- `Retry-After` is read once per response, and values like `1.5` or an HTTP date no longer
+  break it. Python gave up on them, and Node retried a rate-limited API without waiting.
+- A key code, customer ref or ticket ref of `.` or `..` no longer reaches a different
+  endpoint. The bot answers "Nothing matched that." without calling the API. The Python
+  client also keeps `;`, `&` and similar characters encoded, the way Node sends them.
+- Plan autocomplete and the commands share one permission check, so the two cannot drift
+  apart again.
+
 ## 2026-09-24
 
 Buying waits out slow purchases, and plan autocomplete respects roles.
