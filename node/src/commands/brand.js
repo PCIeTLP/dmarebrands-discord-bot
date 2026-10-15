@@ -46,7 +46,7 @@ export const brand = {
         return;
       }
 
-      const saved = await api.updateBrand(patch);
+      const saved = await api.updateBrand(patch, `discord:${interaction.id}`);
       await interaction.editReply({
         embeds: [
           embed("Branding saved", BRAND).setDescription(

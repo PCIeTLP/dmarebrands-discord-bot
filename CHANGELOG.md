@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-10-15
+
+Top-ups, account info for chargebacks, release notes and webhooks, and every change is now
+safe to retry.
+
+- `/topup start` opens a crypto payment for your balance and shows the exact amount to send,
+  the address, any memo or tag the coin needs and a link to the checkout page. `/topup status`
+  and `/topup list` follow it until the money lands. Starting one needs the new
+  `billing.topup` scope, which `ROLES_BILLING` now includes.
+- `/accountinfo request` asks for the account history of whoever redeemed a key, for a
+  chargeback or a dispute. `/accountinfo status` shows where it stands and attaches the zip
+  once it is approved, and `/accountinfo list` shows your recent requests. They need the new
+  `accountinfo.request` and `accountinfo.read` scopes, both part of `ROLES_SUPPORT`.
+- `/changelog` shows what changed in the loader and each product, in English, Russian or
+  Chinese.
+- `/webhooks` lists your Discord webhooks and can send a test post, pause one or turn it
+  back on.
+- `/redemptions` lists the latest keys your customers redeemed, `/online` shows who is online
+  right now and `/customers keys` lists every key you sold one customer.
+- `/stats` adds live customers, who is online, unread tickets and a line for the last 7 days.
+- `/tickets read` marks the thread read, the same as opening it in the partner panel.
+- Refunds, resets, tickets, replies, branding changes, top-ups and account info requests send
+  an `Idempotency-Key` built from the interaction. A retry after a dropped connection gets the
+  first result back instead of doing the work twice, and a request that is still running is
+  waited out for up to a minute, the way `/keys buy` already was.
+- A `429` with a `Retry-After` longer than 30 seconds, such as the limit on opening tickets,
+  is reported straight away instead of being retried into the same limit.
+
 ## 2026-10-13
 
 A purchase that is still going through stays reported that way when the network acts up.

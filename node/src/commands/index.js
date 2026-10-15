@@ -1,10 +1,12 @@
 import { account, domains, plans, stats, whoami } from "./account.js";
-import { balance, ledger } from "./billing.js";
-import { keys } from "./keys.js";
-import { customers, hwid } from "./customers.js";
-import { status, updates } from "./status.js";
+import { balance, ledger, topup } from "./billing.js";
+import { keys, redemptions } from "./keys.js";
+import { customers, hwid, online } from "./customers.js";
+import { changelog, status, updates } from "./status.js";
 import { brand } from "./brand.js";
 import { activity, tickets } from "./support.js";
+import { accountinfo } from "./accountinfo.js";
+import { webhooks } from "./webhooks.js";
 
 export const COMMANDS = [
   account,
@@ -12,13 +14,19 @@ export const COMMANDS = [
   stats,
   balance,
   ledger,
+  topup,
   keys,
+  redemptions,
   customers,
+  online,
   hwid,
+  accountinfo,
   domains,
   status,
   updates,
+  changelog,
   brand,
+  webhooks,
   tickets,
   activity,
   whoami,

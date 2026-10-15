@@ -58,3 +58,14 @@ export function chunk(lines, max = 4000) {
 export function codeBlock(text, lang = "") {
   return `\`\`\`${lang}\n${text}\n\`\`\``;
 }
+
+export function clock(seconds) {
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n <= 0) return "unknown";
+  return `<t:${Math.floor(n)}:t> (<t:${Math.floor(n)}:R>)`;
+}
+
+export function clip(text, max) {
+  const value = String(text ?? "");
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}

@@ -56,3 +56,28 @@ def error_embed(message: str) -> discord.Embed:
 
 def code_block(text: str, lang: str = "") -> str:
     return f"```{lang}\n{text}\n```"
+
+
+def clock(seconds: Any) -> str:
+    try:
+        number = int(seconds)
+    except (TypeError, ValueError):
+        return "unknown"
+    if number <= 0:
+        return "unknown"
+    return f"<t:{number}:t> (<t:{number}:R>)"
+
+
+def clip(text: Any, limit: int) -> str:
+    value = str(text or "")
+    return f"{value[: limit - 1]}…" if len(value) > limit else value
+
+
+def first_page(lines: list[str], limit: int = 4000) -> str:
+    page = ""
+    for line in lines:
+        candidate = f"{page}\n{line}" if page else line
+        if len(candidate) > limit:
+            return page or f"{line[: limit - 1]}…"
+        page = candidate
+    return page or "Nothing to show."

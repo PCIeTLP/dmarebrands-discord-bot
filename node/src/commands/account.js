@@ -60,17 +60,27 @@ export const stats = {
     .setDescription("Headline numbers for the partner account"),
   scopes: "account.read",
   async run({ interaction, api }) {
-    const s = await api.stats();
+    const [s, week] = await Promise.all([api.stats(), api.statsDaily(7).catch(() => null)]);
     const view = embed("Stats", BRAND).addFields(
       { name: "Keys issued", value: String(s.keys_total), inline: true },
       { name: "In stock", value: String(s.keys_unused), inline: true },
       { name: "Active", value: String(s.keys_active), inline: true },
       { name: "Expired", value: String(s.keys_expired), inline: true },
       { name: "Customers", value: String(s.customers), inline: true },
+      { name: "Live customers", value: String(s.live_customers ?? 0), inline: true },
+      { name: "Online now", value: `${s.online_now ?? 0} · ${s.playing_now ?? 0} in game`, inline: true },
       { name: "Balance", value: money(s.balance_usd), inline: true },
       { name: "Spent all time", value: money(s.spent_usd), inline: true },
-      { name: "HWID resets (30d)", value: String(s.hwid_resets_30d), inline: true }
+      { name: "HWID resets (30d)", value: String(s.hwid_resets_30d), inline: true },
+      { name: "Unread tickets", value: String(s.tickets_unread ?? 0), inline: true }
     );
+    if (week?.totals) {
+      const t = week.totals;
+      view.addFields({
+        name: "Last 7 days",
+        value: `${t.redeemed} redeemed · ${t.new_customers} new customers · ${money(t.spent_usd)} spent · up to ${t.peak_players} players a day`,
+      });
+    }
     await interaction.editReply({ embeds: [view] });
   },
 };

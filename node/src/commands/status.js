@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import { BAD, BRAND, GOOD, WARN, embed, isoStamp } from "../format.js";
+import { BAD, BRAND, GOOD, WARN, chunk, clip, embed, isoStamp } from "../format.js";
 
 const TONE = {
   undetected: GOOD,
@@ -51,6 +51,46 @@ export const status = {
     );
 
     await interaction.editReply({ embeds: [view] });
+  },
+};
+
+const LANGUAGES = [
+  { name: "English", value: "en" },
+  { name: "Русский", value: "ru" },
+  { name: "中文", value: "zh" },
+];
+
+export const changelog = {
+  data: new SlashCommandBuilder()
+    .setName("changelog")
+    .setDescription("What changed in the latest loader and product releases")
+    .addStringOption((o) =>
+      o.setName("product").setDescription("loader, or a product such as rust. Leave it empty for all")
+    )
+    .addStringOption((o) => o.setName("language").setDescription("Language of the notes").addChoices(...LANGUAGES))
+    .addIntegerOption((o) =>
+      o.setName("limit").setDescription("How many releases (1-10, default 5)").setMinValue(1).setMaxValue(10)
+    ),
+  scopes: "status.read",
+  async run({ interaction, api }) {
+    const product = interaction.options.getString("product")?.trim().toLowerCase() || undefined;
+    const lang = interaction.options.getString("language") ?? "en";
+    const limit = interaction.options.getInteger("limit") ?? 5;
+    const result = await api.changelogs({ product, lang, limit });
+    const rows = result.data ?? [];
+
+    if (!rows.length) {
+      await interaction.editReply({ content: "No release notes yet." });
+      return;
+    }
+
+    const entries = rows.map((r) => {
+      const from = r.previous_version ? ` (from ${r.previous_version})` : "";
+      const notes = r.notes ? clip(r.notes, 700) : "_No notes for this release._";
+      return `**${r.label} ${r.version}**${from} · ${isoStamp(r.created_at)}\n${notes}\n`;
+    });
+
+    await interaction.editReply({ embeds: [embed("Release notes", BRAND).setDescription(chunk(entries)[0])] });
   },
 };
 

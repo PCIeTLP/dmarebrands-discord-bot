@@ -22,6 +22,43 @@ function keyLine(key) {
   return `\`${key.code}\` · ${stateLabel(key.state)} · ${key.days}d ${key.product}${owner}${expiry}`;
 }
 
+export const redemptions = {
+  data: new SlashCommandBuilder()
+    .setName("redemptions")
+    .setDescription("The latest keys your customers redeemed")
+    .addIntegerOption((option) =>
+      option
+        .setName("limit")
+        .setDescription("How many to show (1-25, default 10)")
+        .setMinValue(1)
+        .setMaxValue(25)
+    ),
+  scopes: "keys.read",
+  async run({ interaction, api }) {
+    const limit = interaction.options.getInteger("limit") ?? 10;
+    const result = await api.redemptions({ limit });
+    const rows = result.data ?? [];
+
+    if (!rows.length) {
+      await interaction.editReply({ content: "Nobody has redeemed one of your keys yet." });
+      return;
+    }
+
+    const view = embed("Latest redemptions", BRAND)
+      .setDescription(
+        rows
+          .map(
+            (r) =>
+              `\`${r.code}\` · ${r.days}d ${r.product} · **${r.customer?.username ?? "deleted account"}** · ${stamp(r.redeemed_at)}`
+          )
+          .join("\n")
+      )
+      .setFooter({ text: `${rows.length} shown` });
+
+    await interaction.editReply({ embeds: [view] });
+  },
+};
+
 export const keys = {
   data: new SlashCommandBuilder()
     .setName("keys")
@@ -254,7 +291,7 @@ async function refundKey({ interaction, api, log }) {
     return;
   }
 
-  const result = await api.refundKey(code);
+  const result = await api.refundKey(code, `discord:${interaction.id}`);
   const done = embed("Refunded", GOOD)
     .setDescription(`\`${result.code}\` is gone.`)
     .addFields(

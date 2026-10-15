@@ -100,6 +100,7 @@ export const tickets = {
 
     if (sub === "read") {
       const t = await api.getTicket(ref);
+      if (t.unread) await api.markTicketRead(ref).catch(() => {});
       const thread = (t.thread ?? [])
         .map((m) => `**${m.role === "partner" ? m.author ?? "you" : "support"}** · ${isoStamp(m.created_at)}\n${m.body}`)
         .join("\n\n");
@@ -111,12 +112,15 @@ export const tickets = {
     }
 
     if (sub === "open") {
-      const made = await api.createTicket({
-        subject: interaction.options.getString("subject"),
-        body: interaction.options.getString("body"),
-        category: interaction.options.getString("category") ?? undefined,
-        priority: interaction.options.getString("priority") ?? undefined,
-      });
+      const made = await api.createTicket(
+        {
+          subject: interaction.options.getString("subject"),
+          body: interaction.options.getString("body"),
+          category: interaction.options.getString("category") ?? undefined,
+          priority: interaction.options.getString("priority") ?? undefined,
+        },
+        `discord:${interaction.id}`
+      );
       await interaction.editReply({
         embeds: [
           embed("Ticket opened", GOOD).setDescription(
@@ -128,7 +132,7 @@ export const tickets = {
     }
 
     if (sub === "reply") {
-      const t = await api.replyTicket(ref, interaction.options.getString("body"));
+      const t = await api.replyTicket(ref, interaction.options.getString("body"), `discord:${interaction.id}`);
       await interaction.editReply({
         embeds: [
           embed("Reply sent", GOOD).setDescription(`\`${t.ref ?? ref}\` now has ${t.messages ?? "more"} message(s).`),

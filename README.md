@@ -2,8 +2,8 @@
 
 **Built for partners of [dmarebrands.st](https://dmarebrands.st).** If you resell dmarebrands
 keys, this lets you run the whole operation from your own Discord server: buy keys, refund
-unsold stock, reset a customer's hardware lock and read your balance without opening the
-partner panel.
+unsold stock, reset a customer's hardware lock, top up your balance and pull a customer's
+account history for a chargeback without opening the partner panel.
 
 You need a partner account and an API key to use it. Everything it does goes through the
 [Partner API](https://partners.dmarebrands.st/partners/api/docs), so it can only ever touch
@@ -27,24 +27,37 @@ There is a [Telegram version](https://github.com/PCIeTLP/dmarebrands-telegram-bo
 |---|---|---|
 | `/account` | Partner account, brand and headline numbers | `account.read` |
 | `/plans` | Every plan with your discounted price | `account.read` |
-| `/stats` | Keys issued, active, expired, customers | `account.read` |
+| `/stats` | Keys, customers, who is online and the last 7 days | `account.read` |
 | `/balance` | Available balance and how to top up | `billing.read` |
 | `/ledger [limit]` | Recent movements on the balance | `billing.read` |
+| `/topup start <amount> <coin>` | Open a crypto payment for your balance | `billing.topup` |
+| `/topup status <ref>` | Where a top-up stands | `billing.read` |
+| `/topup list` | Your recent top-ups | `billing.read` |
 | `/keys list [filter] [search] [limit]` | Keys you have issued | `keys.read` |
 | `/keys buy <plan> [count]` | Mint new keys against your balance | `keys.buy` |
 | `/keys info <code>` | One key, including who redeemed it | `keys.read` |
 | `/keys refund <code>` | Destroy an unsold key, money back | `keys.refund` |
+| `/redemptions [limit]` | The latest keys your customers redeemed | `keys.read` |
 | `/customers list [search] [limit]` | Everyone who redeemed your keys | `customers.read` |
 | `/customers info <ref>` | One customer and their machines, by id, username or key | `customers.read` |
+| `/customers keys <ref>` | Every key you sold one customer | `customers.read` |
+| `/online` | Your customers who are online right now | `customers.read` |
 | `/hwid key <code>` | Clear their hardware lock, by key | `hwid.reset` |
 | `/hwid customer <ref>` | Clear their hardware lock, by id, username or key | `hwid.reset` |
+| `/accountinfo request <key> <reason> [reference] [note]` | Ask for a customer's account history, for chargebacks and disputes | `accountinfo.request` |
+| `/accountinfo status <ref>` | Where a request stands, with the zip attached once it is approved | `accountinfo.read` |
+| `/accountinfo list [status]` | Your recent requests | `accountinfo.read` |
 | `/domains` | Your white-label domains and DNS state | `domains.read` |
 | `/status [product]` | Whether a product is up, and whether keys are frozen | `status.read` |
 | `/updates [product]` | Latest build and recent patch notes for rust or wardogs | `status.read` |
+| `/changelog [product] [language]` | What changed in each loader and product release, in English, Russian or Chinese | `status.read` |
 | `/brand show` | Your branding and public page links | `brand.read` |
 | `/brand set [fields]` | Change name, colours, store link or the public toggles | `brand.write` |
+| `/webhooks list` | Your Discord webhooks for status changes and update notes | `brand.read` |
+| `/webhooks test <id>` | Send a test post through a webhook | `brand.write` |
+| `/webhooks pause <id>` / `resume <id>` | Stop a webhook posting, or turn it back on | `brand.write` |
 | `/tickets list [status] [search]` | Your support threads | `tickets.read` |
-| `/tickets read <ref>` | One thread with its messages | `tickets.read` |
+| `/tickets read <ref>` | One thread with its messages, which also marks it read | `tickets.read` |
 | `/tickets open <subject> <body>` | Open a support ticket | `tickets.write` |
 | `/tickets reply <ref> <body>` | Reply to a thread | `tickets.write` |
 | `/tickets close <ref>` | Close a thread | `tickets.write` |
@@ -73,8 +86,8 @@ ROLES_READ=666666666666666666
 | `ROLES_ADMIN` | everything |
 | `ROLES_KEYS` | buy, refund, read keys and customers |
 | `ROLES_HWID` | reset hardware locks, read keys and customers |
-| `ROLES_BILLING` | balance and ledger |
-| `ROLES_SUPPORT` | product status, tickets, read customers |
+| `ROLES_BILLING` | balance, ledger and top-ups |
+| `ROLES_SUPPORT` | product status, tickets, account info requests, read customers |
 | `ROLES_READ` | read-only across the board |
 
 **To give a role nothing but HWID resets, put it in `ROLES_HWID` and nowhere else.** That role
@@ -123,6 +136,11 @@ request.
 - Set `LOG_CHANNEL_ID` to have every purchase, refund and reset posted to a channel. Useful
   when several staff share one partner account.
 - Confirmation buttons only accept a press from the person who ran the command.
+- An account info zip holds a customer's sign-in history and IP addresses. It is attached to an
+  ephemeral reply by default, so only the person who asked sees it.
+- Every command that changes something sends an `Idempotency-Key` made from the interaction. If
+  the connection drops and the bot sends it again, the API answers with the first result instead
+  of doing the work twice.
 
 ## Licence
 

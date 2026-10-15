@@ -6,10 +6,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import discord  # noqa: E402
+import discord
 
-from dmarebrandsbot.bot import COGS, PartnerBot  # noqa: E402
-from dmarebrandsbot.config import load_config  # noqa: E402
+from dmarebrandsbot.bot import COGS, PartnerBot
+from dmarebrandsbot.config import load_config
 
 
 async def main() -> int:

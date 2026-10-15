@@ -21,6 +21,8 @@ COGS = (
     "dmarebrandsbot.cogs.status",
     "dmarebrandsbot.cogs.brand",
     "dmarebrandsbot.cogs.support",
+    "dmarebrandsbot.cogs.accountinfo",
+    "dmarebrandsbot.cogs.webhooks",
 )
 
 

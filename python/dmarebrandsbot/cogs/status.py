@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ..formatting import BAD, BRAND, GOOD, WARN, embed, iso_stamp
+from ..formatting import BAD, BRAND, GOOD, WARN, clip, embed, first_page, iso_stamp
 from ..permissions import requires
 
 TONE = {
@@ -22,6 +22,13 @@ HEADLINE = {
     "detected": "Detected, tell people to stop",
     "discontinued": "Discontinued",
 }
+
+
+LANGUAGE_CHOICES = [
+    app_commands.Choice(name="English", value="en"),
+    app_commands.Choice(name="Русский", value="ru"),
+    app_commands.Choice(name="中文", value="zh"),
+]
 
 
 class Status(commands.Cog):
@@ -77,6 +84,45 @@ class Status(commands.Cog):
             listed = "\n".join(f"[{n['title']}]({n['url']}) · {n['date']}" for n in notes)
             view.add_field(name="Recent notes", value=listed[:1024])
 
+        await interaction.edit_original_response(embed=view)
+
+
+    @app_commands.command(description="What changed in the latest loader and product releases")
+    @app_commands.describe(
+        product="loader, or a product such as rust. Leave it empty for all",
+        language="Language of the notes",
+        limit="How many releases (1-10, default 5)",
+    )
+    @app_commands.choices(language=LANGUAGE_CHOICES)
+    @requires("status.read")
+    async def changelog(
+        self,
+        interaction: discord.Interaction,
+        product: str | None = None,
+        language: app_commands.Choice[str] | None = None,
+        limit: app_commands.Range[int, 1, 10] = 5,
+    ) -> None:
+        result = await self.bot.partner_api.changelogs(
+            product=(product or "").strip().lower() or None,
+            lang=language.value if language else "en",
+            limit=limit,
+        )
+        rows = result.get("data") or []
+
+        if not rows:
+            await interaction.edit_original_response(content="No release notes yet.")
+            return
+
+        entries = []
+        for r in rows:
+            since = f" (from {r['previous_version']})" if r.get("previous_version") else ""
+            notes = clip(r["notes"], 700) if r.get("notes") else "_No notes for this release._"
+            entries.append(
+                f"**{r.get('label')} {r.get('version')}**{since} · {iso_stamp(r.get('created_at'))}\n{notes}\n"
+            )
+
+        view = embed("Release notes", BRAND)
+        view.description = first_page(entries)
         await interaction.edit_original_response(embed=view)
 
 

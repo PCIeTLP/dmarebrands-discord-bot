@@ -6,10 +6,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import aiohttp  # noqa: E402
+import aiohttp
 
-from dmarebrandsbot.api import PartnerApi, friendly  # noqa: E402
-from dmarebrandsbot.config import GROUPS, SCOPES, load_config  # noqa: E402
+from dmarebrandsbot.api import PartnerApi, friendly
+from dmarebrandsbot.config import GROUPS, SCOPES, load_config
 
 DISCORD_API = "https://discord.com/api/v10"
 

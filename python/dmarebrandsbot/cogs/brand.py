@@ -84,7 +84,7 @@ class Brand(commands.Cog):
             )
             return
 
-        saved = await self.bot.partner_api.update_brand(patch)
+        saved = await self.bot.partner_api.update_brand(patch, key=f"discord:{interaction.id}")
         view = embed("Branding saved", BRAND)
         view.description = f"Changed {', '.join(patch)}.\n\n" + summary(saved)
         await interaction.edit_original_response(embed=view)

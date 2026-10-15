@@ -63,7 +63,13 @@ class Support(commands.Cog):
     @group.command(name="read", description="Read one thread")
     @requires("tickets.read")
     async def read(self, interaction: discord.Interaction, ref: str) -> None:
-        t = await self.bot.partner_api.get_ticket(ref.strip().upper())
+        code = ref.strip().upper()
+        t = await self.bot.partner_api.get_ticket(code)
+        if t.get("unread"):
+            try:
+                await self.bot.partner_api.mark_ticket_read(code)
+            except Exception:
+                pass
         thread = "\n\n".join(
             f"**{m.get('author') or 'you' if m.get('role') == 'partner' else 'support'}** "
             f"· {iso_stamp(m.get('created_at'))}\n{m.get('body')}"
@@ -90,6 +96,7 @@ class Support(commands.Cog):
             body=body,
             category=category.value if category else None,
             priority=priority.value if priority else None,
+            key=f"discord:{interaction.id}",
         )
         view = embed("Ticket opened", GOOD)
         view.description = (
@@ -102,7 +109,7 @@ class Support(commands.Cog):
     @requires("tickets.write")
     async def reply(self, interaction: discord.Interaction, ref: str, body: str) -> None:
         code = ref.strip().upper()
-        t = await self.bot.partner_api.reply_ticket(code, body)
+        t = await self.bot.partner_api.reply_ticket(code, body, key=f"discord:{interaction.id}")
         view = embed("Reply sent", GOOD)
         view.description = f"`{t.get('ref') or code}` now has {t.get('messages', 'more')} message(s)."
         await interaction.edit_original_response(embed=view)

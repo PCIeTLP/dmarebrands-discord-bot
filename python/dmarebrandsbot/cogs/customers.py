@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from ..confirm import ask
-from ..formatting import BRAND, GOOD, WARN, embed, iso_stamp, stamp
+from ..formatting import BRAND, GOOD, WARN, embed, first_page, iso_stamp, stamp, state_label
 from ..permissions import requires
 
 
@@ -99,6 +99,60 @@ class Customers(
 
         await interaction.edit_original_response(embed=view)
 
+    @app_commands.command(name="keys", description="Every key you sold one customer")
+    @app_commands.describe(ref="Customer id, username, or a key code you sold them")
+    @requires("customers.read")
+    async def keys(self, interaction: discord.Interaction, ref: str) -> None:
+        result = await self.bot.partner_api.customer_keys(ref.strip())
+        rows = result.get("data") or []
+        who = (result.get("customer") or {}).get("username") or ref.strip()
+
+        if not rows:
+            await interaction.edit_original_response(content=f"{who} has no keys from you.")
+            return
+
+        lines = []
+        for key in rows:
+            expiry = f" · expires {stamp(key['expires_at'])}" if key.get("expires_at") else ""
+            lines.append(
+                f"`{key.get('code')}` · {state_label(key.get('state'))} · {key.get('days')}d {key.get('product')}{expiry}"
+            )
+
+        view = embed(f"Keys for {who}", BRAND)
+        view.description = first_page(lines)
+        view.set_footer(text=f"{len(rows)} key{'' if len(rows) == 1 else 's'}")
+        await interaction.edit_original_response(embed=view)
+
+
+class Online(commands.Cog):
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot = bot
+
+    @app_commands.command(description="Your customers who are online right now")
+    @requires("customers.read")
+    async def online(self, interaction: discord.Interaction) -> None:
+        result = await self.bot.partner_api.online()
+        rows = result.get("data") or []
+
+        if not rows:
+            await interaction.edit_original_response(content="Nobody is online right now.")
+            return
+
+        lines = []
+        for c in rows:
+            playing = c.get("playing") or []
+            menu = c.get("menu") or []
+            if playing:
+                doing = f"in {', '.join(playing)}"
+            else:
+                doing = f"menu open ({', '.join(menu)})" if menu else "menu open"
+            lines.append(f"**{c.get('username')}** · {doing} · since {iso_stamp(c.get('online_since'))}")
+
+        view = embed(f"Online now ({len(rows)})", GOOD)
+        view.description = first_page(lines)
+        view.set_footer(text=f"{result.get('playing', 0)} in game")
+        await interaction.edit_original_response(embed=view)
+
 
 class Hwid(
     commands.GroupCog,
@@ -137,7 +191,7 @@ class Hwid(
             await interaction.edit_original_response(embed=cancelled, view=None)
             return
 
-        result = await self.bot.partner_api.reset_by_key(clean)
+        result = await self.bot.partner_api.reset_by_key(clean, key=f"discord:{interaction.id}")
         cleared = result.get("cleared", 0)
 
         done = embed("Machine reset", GOOD)
@@ -169,7 +223,7 @@ class Hwid(
             await interaction.edit_original_response(embed=cancelled, view=None)
             return
 
-        result = await self.bot.partner_api.reset_by_customer(customer["id"])
+        result = await self.bot.partner_api.reset_by_customer(customer["id"], key=f"discord:{interaction.id}")
         cleared = result.get("cleared", 0)
 
         done = embed("Machine reset", GOOD)
@@ -184,4 +238,5 @@ class Hwid(
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Customers(bot))
+    await bot.add_cog(Online(bot))
     await bot.add_cog(Hwid(bot))

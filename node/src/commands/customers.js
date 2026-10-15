@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import { BRAND, GOOD, WARN, embed, isoStamp, stamp } from "../format.js";
+import { BRAND, GOOD, WARN, chunk, embed, isoStamp, stamp, stateLabel } from "../format.js";
 import { confirm } from "../confirm.js";
 
 function productLines(customer) {
@@ -46,17 +46,80 @@ export const customers = {
             .setDescription("Customer id, username, or a key code you sold them")
             .setRequired(true)
         )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("keys")
+        .setDescription("Every key you sold one customer")
+        .addStringOption((option) =>
+          option
+            .setName("ref")
+            .setDescription("Customer id, username, or a key code you sold them")
+            .setRequired(true)
+        )
     ),
 
   scopes: {
     list: "customers.read",
     info: "customers.read",
+    keys: "customers.read",
   },
 
   async run(ctx) {
     const sub = ctx.interaction.options.getSubcommand();
     if (sub === "list") return listCustomers(ctx);
     if (sub === "info") return customerInfo(ctx);
+    if (sub === "keys") return customerKeys(ctx);
+  },
+};
+
+async function customerKeys({ interaction, api }) {
+  const ref = interaction.options.getString("ref", true).trim();
+  const result = await api.customerKeys(ref);
+  const rows = result.data ?? [];
+  const who = result.customer?.username ?? ref;
+
+  if (!rows.length) {
+    await interaction.editReply({ content: `${who} has no keys from you.` });
+    return;
+  }
+
+  const lines = rows.map((key) => {
+    const expiry = key.expires_at ? ` · expires ${stamp(key.expires_at)}` : "";
+    return `\`${key.code}\` · ${stateLabel(key.state)} · ${key.days}d ${key.product}${expiry}`;
+  });
+  const view = embed(`Keys for ${who}`, BRAND)
+    .setDescription(chunk(lines)[0])
+    .setFooter({ text: `${rows.length} key${rows.length === 1 ? "" : "s"}` });
+
+  await interaction.editReply({ embeds: [view] });
+}
+
+export const online = {
+  data: new SlashCommandBuilder()
+    .setName("online")
+    .setDescription("Your customers who are online right now"),
+  scopes: "customers.read",
+  async run({ interaction, api }) {
+    const result = await api.online();
+    const rows = result.data ?? [];
+
+    if (!rows.length) {
+      await interaction.editReply({ content: "Nobody is online right now." });
+      return;
+    }
+
+    const lines = rows.map((c) => {
+      const doing = c.playing?.length
+        ? `in ${c.playing.join(", ")}`
+        : `menu open${c.menu?.length ? ` (${c.menu.join(", ")})` : ""}`;
+      return `**${c.username}** · ${doing} · since ${isoStamp(c.online_since)}`;
+    });
+    const view = embed(`Online now (${rows.length})`, GOOD)
+      .setDescription(chunk(lines)[0])
+      .setFooter({ text: `${result.playing ?? 0} in game` });
+
+    await interaction.editReply({ embeds: [view] });
   },
 };
 
@@ -177,7 +240,7 @@ async function resetByKey({ interaction, api, log }) {
     return;
   }
 
-  const result = await api.resetByKey(code);
+  const result = await api.resetByKey(code, `discord:${interaction.id}`);
   await interaction.editReply({
     embeds: [
       embed("Machine reset", GOOD).setDescription(
@@ -207,7 +270,7 @@ async function resetByCustomer({ interaction, api, log }) {
     return;
   }
 
-  const result = await api.resetByCustomer(customer.id);
+  const result = await api.resetByCustomer(customer.id, `discord:${interaction.id}`);
   await interaction.editReply({
     embeds: [
       embed("Machine reset", GOOD).setDescription(

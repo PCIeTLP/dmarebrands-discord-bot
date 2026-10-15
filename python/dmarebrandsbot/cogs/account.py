@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -57,16 +59,39 @@ class Account(commands.Cog):
     @app_commands.command(description="Headline numbers for the partner account")
     @requires("account.read")
     async def stats(self, interaction: discord.Interaction) -> None:
-        s = await self.bot.partner_api.stats()
+        s, week = await asyncio.gather(
+            self.bot.partner_api.stats(),
+            self.bot.partner_api.stats_daily(7),
+            return_exceptions=True,
+        )
+        if isinstance(s, BaseException):
+            raise s
         view = embed("Stats", BRAND)
         view.add_field(name="Keys issued", value=str(s.get("keys_total", 0)), inline=True)
         view.add_field(name="In stock", value=str(s.get("keys_unused", 0)), inline=True)
         view.add_field(name="Active", value=str(s.get("keys_active", 0)), inline=True)
         view.add_field(name="Expired", value=str(s.get("keys_expired", 0)), inline=True)
         view.add_field(name="Customers", value=str(s.get("customers", 0)), inline=True)
+        view.add_field(name="Live customers", value=str(s.get("live_customers", 0)), inline=True)
+        view.add_field(
+            name="Online now",
+            value=f"{s.get('online_now', 0)} · {s.get('playing_now', 0)} in game",
+            inline=True,
+        )
         view.add_field(name="Balance", value=money(s.get("balance_usd")), inline=True)
         view.add_field(name="Spent all time", value=money(s.get("spent_usd")), inline=True)
         view.add_field(name="HWID resets (30d)", value=str(s.get("hwid_resets_30d", 0)), inline=True)
+        view.add_field(name="Unread tickets", value=str(s.get("tickets_unread", 0)), inline=True)
+        totals = week.get("totals") if isinstance(week, dict) else None
+        if totals:
+            view.add_field(
+                name="Last 7 days",
+                value=(
+                    f"{totals.get('redeemed', 0)} redeemed · {totals.get('new_customers', 0)} new customers · "
+                    f"{money(totals.get('spent_usd'))} spent · up to {totals.get('peak_players', 0)} players a day"
+                ),
+                inline=False,
+            )
         await interaction.edit_original_response(embed=view)
 
     @app_commands.command(description="Show your white-label domains and whether they are live")

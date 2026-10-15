@@ -203,7 +203,7 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
             await interaction.edit_original_response(embed=cancelled, view=None)
             return
 
-        result = await self.bot.partner_api.refund_key(clean)
+        result = await self.bot.partner_api.refund_key(clean, key=f"discord:{interaction.id}")
         done = embed("Refunded", GOOD)
         done.description = f"`{result['code']}` is gone."
         done.add_field(name="Returned", value=money(result.get("refunded_usd")), inline=True)
@@ -215,5 +215,36 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
         )
 
 
+class Redemptions(commands.Cog):
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot = bot
+
+    @app_commands.command(description="The latest keys your customers redeemed")
+    @app_commands.describe(limit="How many to show (1-25, default 10)")
+    @requires("keys.read")
+    async def redemptions(
+        self, interaction: discord.Interaction, limit: app_commands.Range[int, 1, 25] = 10
+    ) -> None:
+        result = await self.bot.partner_api.redemptions(limit=limit)
+        rows = result.get("data") or []
+
+        if not rows:
+            await interaction.edit_original_response(content="Nobody has redeemed one of your keys yet.")
+            return
+
+        lines = []
+        for r in rows:
+            who = (r.get("customer") or {}).get("username") or "deleted account"
+            lines.append(
+                f"`{r.get('code')}` · {r.get('days')}d {r.get('product')} · **{who}** · {stamp(r.get('redeemed_at'))}"
+            )
+
+        view = embed("Latest redemptions", BRAND)
+        view.description = "\n".join(lines)
+        view.set_footer(text=f"{len(rows)} shown")
+        await interaction.edit_original_response(embed=view)
+
+
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Keys(bot))
+    await bot.add_cog(Redemptions(bot))

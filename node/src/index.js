@@ -18,7 +18,6 @@ async function logAction(text) {
   } catch {}
 }
 
-// The one scope check for an interaction, shared by commands and their autocomplete.
 function access(interaction, command) {
   const granted = scopesFor(interaction.member, config.roleScopes);
   const needed = scopeFor(command, interaction.options.getSubcommand(false) ?? undefined);
