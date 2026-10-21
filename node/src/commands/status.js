@@ -99,7 +99,7 @@ export const updates = {
     .setName("updates")
     .setDescription("Show the latest game build and the recent patch notes")
     .addStringOption((o) =>
-      o.setName("product").setDescription("Which game, rust or wardogs. Defaults to rust")
+      o.setName("product").setDescription("Which game: rust, wardogs or deadlock. Defaults to rust")
     ),
   scopes: "status.read",
   async run({ interaction, api }) {
@@ -112,7 +112,9 @@ export const updates = {
     view.setDescription(
       build
         ? `Current build **${build.buildid}**${build.at ? ` · ${isoStamp(build.at)}` : ""}` +
-            (result.average_gap_days ? `\nUsually about ${result.average_gap_days} days between builds.` : "")
+            (result.average_gap_days
+              ? `\nUsually about ${result.average_gap_days} day${result.average_gap_days === 1 ? "" : "s"} between builds.`
+              : "")
         : "No build information yet."
     );
 

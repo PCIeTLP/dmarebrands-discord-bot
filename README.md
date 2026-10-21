@@ -49,7 +49,7 @@ There is a [Telegram version](https://github.com/PCIeTLP/dmarebrands-telegram-bo
 | `/accountinfo list [status]` | Your recent requests | `accountinfo.read` |
 | `/domains` | Your white-label domains and DNS state | `domains.read` |
 | `/status [product]` | Whether a product is up, and whether keys are frozen | `status.read` |
-| `/updates [product]` | Latest build and recent patch notes for rust or wardogs | `status.read` |
+| `/updates [product]` | Latest build and recent patch notes for rust, wardogs or deadlock | `status.read` |
 | `/changelog [product] [language]` | What changed in each loader and product release, in English, Russian or Chinese | `status.read` |
 | `/brand show` | Your branding and public page links | `brand.read` |
 | `/brand set [fields]` | Change name, colours, store link or the public toggles | `brand.write` |

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-21
+
+Deadlock is public, so the bot covers it the way it covers Rust and Wardogs.
+
+- `/updates deadlock` shows Deadlock's latest build and Valve's recent patch notes. The
+  `product` option now says rust, wardogs or deadlock.
+- `/status`, `/plans`, `/keys buy` and `/changelog` take their products from the API, so
+  Deadlock shows up there without any change on your side.
+- Status webhooks can include Deadlock now. Webhooks you already have keep the products they
+  had, so tick Deadlock under Products in the partner panel if you want it there too.
+- A one-day gap between builds reads "1 day" instead of "1 days". Deadlock ships far more
+  often than the other games, so it is the usual case there.
+
 ## 2026-10-15
 
 Top-ups, account info for chargebacks, release notes and webhooks, and every change is now

@@ -64,7 +64,7 @@ class Status(commands.Cog):
         await interaction.edit_original_response(embed=view)
 
     @app_commands.command(description="Show the latest game build and the recent patch notes")
-    @app_commands.describe(product="Which game, rust or wardogs. Defaults to rust")
+    @app_commands.describe(product="Which game: rust, wardogs or deadlock. Defaults to rust")
     @requires("status.read")
     async def updates(self, interaction: discord.Interaction, product: str | None = None) -> None:
         result = await self.bot.partner_api.updates(product)
@@ -75,7 +75,7 @@ class Status(commands.Cog):
         if build:
             seen = f" · {iso_stamp(build['at'])}" if build.get("at") else ""
             gap = result.get("average_gap_days")
-            extra = f"\nUsually about {gap} days between builds." if gap else ""
+            extra = f"\nUsually about {gap} day{'' if gap == 1 else 's'} between builds." if gap else ""
             view.description = f"Current build **{build.get('buildid')}**{seen}{extra}"
         else:
             view.description = "No build information yet."
