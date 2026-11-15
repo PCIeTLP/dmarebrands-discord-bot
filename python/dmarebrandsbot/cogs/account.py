@@ -34,6 +34,8 @@ class Account(commands.Cog):
 
         if brand.get("store_url"):
             view.url = brand["store_url"]
+        if brand.get("id"):
+            view.set_footer(text=f"Brand id {brand['id']}")
 
         await interaction.edit_original_response(embed=view)
 

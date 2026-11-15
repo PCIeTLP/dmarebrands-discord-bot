@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import { BAD, BRAND, GOOD, WARN, chunk, embed, isoStamp } from "../format.js";
+import { BAD, BRAND, GOOD, WARN, chunk, embed, isoStamp, newest } from "../format.js";
 
 const STATUS_TONE = { open: WARN, answered: GOOD, resolved: GOOD, closed: BRAND };
 const CATEGORIES = ["billing", "technical", "account", "integration", "other"];
@@ -100,14 +100,26 @@ export const tickets = {
 
     if (sub === "read") {
       const t = await api.getTicket(ref);
-      if (t.unread) await api.markTicketRead(ref).catch(() => {});
-      const thread = (t.thread ?? [])
-        .map((m) => `**${m.role === "partner" ? m.author ?? "you" : "support"}** · ${isoStamp(m.created_at)}\n${m.body}`)
-        .join("\n\n");
-      const view = embed(`${t.ref} · ${t.subject}`, STATUS_TONE[t.status] ?? BRAND).setDescription(
-        `${t.status} · ${t.priority} · ${t.category}\n\n${chunk([thread])[0] ?? "No messages yet."}`
+      const thread = t.thread ?? [];
+      const head = `${t.status} · ${t.priority} · ${t.category}`;
+      const shown = newest(
+        thread.map(
+          (m) => `**${m.role === "partner" ? m.author ?? "you" : "support"}** · ${isoStamp(m.created_at)}\n${m.body}`
+        ),
+        3900 - head.length
       );
+      const seen = shown.whole && shown.skipped <= thread.map((m) => m.role).lastIndexOf("partner") + 1;
+      const earlier = shown.skipped
+        ? `_${shown.skipped} earlier message${shown.skipped === 1 ? "" : "s"} not shown._\n\n`
+        : "";
+      const view = embed(`${t.ref} · ${t.subject}`, STATUS_TONE[t.status] ?? BRAND).setDescription(
+        `${head}\n\n${earlier}${shown.text || "No messages yet."}`
+      );
+      if (!seen) {
+        view.setFooter({ text: "Some replies are too long to show here. Read them in the partner panel." });
+      }
       await interaction.editReply({ embeds: [view] });
+      if (t.unread && seen) await api.markTicketRead(ref).catch(() => {});
       return;
     }
 

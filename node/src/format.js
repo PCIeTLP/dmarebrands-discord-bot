@@ -55,6 +55,20 @@ export function chunk(lines, max = 4000) {
   return pages.length ? pages : ["Nothing to show."];
 }
 
+export function newest(blocks, max = 4000) {
+  let text = "";
+  let kept = 0;
+  while (kept < blocks.length) {
+    const block = blocks[blocks.length - 1 - kept];
+    const next = text ? `${block}\n\n${text}` : block;
+    if (next.length > max) break;
+    text = next;
+    kept += 1;
+  }
+  if (kept || !blocks.length) return { text, skipped: blocks.length - kept, whole: true };
+  return { text: clip(blocks[blocks.length - 1], max), skipped: blocks.length - 1, whole: false };
+}
+
 export function codeBlock(text, lang = "") {
   return `\`\`\`${lang}\n${text}\n\`\`\``;
 }

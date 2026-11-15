@@ -157,6 +157,7 @@ class Topup(commands.GroupCog, name="topup", description="Add money to the partn
         )
 
     @start.autocomplete("coin")
+    @requires("billing.topup")
     async def start_coin(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
         return await self.coin_autocomplete(interaction, current)
 

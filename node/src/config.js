@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 const SNOWFLAKE = /^\d{17,20}$/;
+const BRAND_ID_RE = /^[1-9]\d{0,9}$/;
 
 export const SCOPES = [
   "account.read",
@@ -25,7 +26,7 @@ export const SCOPES = [
 export const GROUPS = {
   ROLES_ADMIN: SCOPES,
   ROLES_KEYS: ["account.read", "keys.read", "keys.buy", "keys.refund", "customers.read", "status.read"],
-  ROLES_HWID: ["hwid.reset", "keys.read", "customers.read", "status.read"],
+  ROLES_HWID: ["hwid.reset", "customers.read", "status.read"],
   ROLES_BILLING: ["account.read", "billing.read", "billing.topup"],
   ROLES_SUPPORT: [
     "account.read",
@@ -87,6 +88,13 @@ function optionalSnowflake(name) {
   return raw;
 }
 
+function optionalBrand() {
+  const raw = (process.env.BRAND_ID ?? "").trim();
+  if (!raw) return null;
+  if (!BRAND_ID_RE.test(raw)) throw new ConfigError(`BRAND_ID must be a numeric brand ID, got "${raw}"`);
+  return raw;
+}
+
 function buildRoleScopes() {
   const map = new Map();
   let total = 0;
@@ -135,6 +143,7 @@ function load() {
     guildId: snowflake("DISCORD_GUILD_ID"),
     apiKey,
     apiBase: base.replace(/\/+$/, ""),
+    brandId: optionalBrand(),
     roleScopes: buildRoleScopes(),
     logChannelId: optionalSnowflake("LOG_CHANNEL_ID"),
     ephemeral: (process.env.EPHEMERAL ?? "true").toLowerCase() !== "false",

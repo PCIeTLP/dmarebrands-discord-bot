@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SNOWFLAKE = re.compile(r"^\d{17,20}$")
+BRAND_ID_RE = re.compile(r"^[1-9]\d{0,9}$")
 
 SCOPES = (
     "account.read",
@@ -42,7 +43,7 @@ GROUPS: dict[str, tuple[str, ...]] = {
         "customers.read",
         "status.read",
     ),
-    "ROLES_HWID": ("hwid.reset", "keys.read", "customers.read", "status.read"),
+    "ROLES_HWID": ("hwid.reset", "customers.read", "status.read"),
     "ROLES_BILLING": ("account.read", "billing.read", "billing.topup"),
     "ROLES_SUPPORT": (
         "account.read",
@@ -78,6 +79,7 @@ class Config:
     guild_id: int
     api_key: str
     api_base: str
+    brand_id: str | None = None
     role_scopes: dict[int, frozenset[str]] = field(default_factory=dict)
     log_channel_id: int | None = None
     ephemeral: bool = True
@@ -104,6 +106,15 @@ def _optional_snowflake(name: str) -> int | None:
     if not SNOWFLAKE.match(value):
         raise ConfigError(f"{name} must be a Discord ID (17-20 digits), got {value!r}")
     return int(value)
+
+
+def _optional_brand() -> str | None:
+    value = (os.environ.get("BRAND_ID") or "").strip()
+    if not value:
+        return None
+    if not BRAND_ID_RE.match(value):
+        raise ConfigError(f"BRAND_ID must be a numeric brand ID, got {value!r}")
+    return value
 
 
 def _id_list(name: str) -> list[int]:
@@ -156,6 +167,7 @@ def _load() -> Config:
         guild_id=_snowflake("DISCORD_GUILD_ID"),
         api_key=api_key,
         api_base=base.rstrip("/"),
+        brand_id=_optional_brand(),
         role_scopes=_build_role_scopes(),
         log_channel_id=_optional_snowflake("LOG_CHANNEL_ID"),
         ephemeral=(os.environ.get("EPHEMERAL") or "true").lower() != "false",

@@ -51,7 +51,7 @@ class PartnerBot(commands.Bot):
             tree_cls=PartnerTree,
         )
         self.partner_config = config
-        self.partner_api = PartnerApi(config.api_key, config.api_base)
+        self.partner_api = PartnerApi(config.api_key, config.api_base, config.brand_id)
         self.tree.on_error = self.on_tree_error
 
     async def setup_hook(self) -> None:
@@ -64,12 +64,19 @@ class PartnerBot(commands.Bot):
 
         try:
             me = await self.partner_api.me()
+            brand = me.get("brand") or {}
+            name = f" ({brand['name']})" if brand.get("name") else ""
             log.info(
-                "Partner API connected as %s · balance $%s", me.get("username"), me.get("balance_usd")
+                "Partner API connected as %s · brand %s%s · balance $%s",
+                me.get("username"),
+                brand.get("id"),
+                name,
+                me.get("balance_usd"),
             )
         except Exception as err:
-            log.error("The partner API rejected the bot's key: %s", friendly(err))
-            log.error("Fix DMAREBRANDS_API_KEY in your .env, then restart.")
+            wrong = bool(self.partner_config.brand_id) and isinstance(err, ApiError) and err.code == "not_found"
+            log.error("The partner API rejected the bot's %s: %s", "BRAND_ID" if wrong else "key", friendly(err))
+            log.error("Fix %s in your .env, then restart.", "BRAND_ID" if wrong else "DMAREBRANDS_API_KEY")
 
         guild = discord.Object(id=self.partner_config.guild_id)
         registered = await self.tree.fetch_commands(guild=guild)

@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import aiohttp
 
-from dmarebrandsbot.api import PartnerApi, friendly
+from dmarebrandsbot.api import ApiError, PartnerApi, friendly
 from dmarebrandsbot.config import GROUPS, SCOPES, load_config
 
 DISCORD_API = "https://discord.com/api/v10"
@@ -32,15 +32,17 @@ async def main() -> int:
     ok("env parsed", f"{len(config.role_scopes)} role(s) configured")
 
     print("\nchecking the partner API")
-    api = PartnerApi(config.api_key, config.api_base)
+    api = PartnerApi(config.api_key, config.api_base, config.brand_id)
     try:
         me = await api.me()
         ok(
             "API key works",
-            f"{me.get('username')}, balance ${me.get('balance_usd')}, {me.get('discount_pct')}% off",
+            f"{me.get('username')}, brand {(me.get('brand') or {}).get('id')}, "
+            f"balance ${me.get('balance_usd')}, {me.get('discount_pct')}% off",
         )
     except Exception as err:
-        bad("API key rejected", friendly(err))
+        wrong = bool(config.brand_id) and isinstance(err, ApiError) and err.code == "not_found"
+        bad("BRAND_ID rejected" if wrong else "API key rejected", friendly(err))
     finally:
         await api.close()
 

@@ -81,3 +81,17 @@ def first_page(lines: list[str], limit: int = 4000) -> str:
             return page or f"{line[: limit - 1]}…"
         page = candidate
     return page or "Nothing to show."
+
+
+def newest(blocks: list[str], limit: int = 4000) -> tuple[str, int, bool]:
+    text = ""
+    kept = 0
+    for block in reversed(blocks):
+        candidate = f"{block}\n\n{text}" if text else block
+        if len(candidate) > limit:
+            break
+        text = candidate
+        kept += 1
+    if kept or not blocks:
+        return text, len(blocks) - kept, True
+    return clip(blocks[-1], limit), len(blocks) - 1, False

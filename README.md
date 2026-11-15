@@ -57,7 +57,7 @@ There is a [Telegram version](https://github.com/PCIeTLP/dmarebrands-telegram-bo
 | `/webhooks test <id>` | Send a test post through a webhook | `brand.write` |
 | `/webhooks pause <id>` / `resume <id>` | Stop a webhook posting, or turn it back on | `brand.write` |
 | `/tickets list [status] [search]` | Your support threads | `tickets.read` |
-| `/tickets read <ref>` | One thread with its messages, which also marks it read | `tickets.read` |
+| `/tickets read <ref>` | The newest messages in a thread, which also marks it read | `tickets.read` |
 | `/tickets open <subject> <body>` | Open a support ticket | `tickets.write` |
 | `/tickets reply <ref> <body>` | Reply to a thread | `tickets.write` |
 | `/tickets close <ref>` | Close a thread | `tickets.write` |
@@ -85,14 +85,14 @@ ROLES_READ=666666666666666666
 |---|---|
 | `ROLES_ADMIN` | everything |
 | `ROLES_KEYS` | buy, refund, read keys and customers |
-| `ROLES_HWID` | reset hardware locks, read keys and customers |
+| `ROLES_HWID` | reset hardware locks, look up customers |
 | `ROLES_BILLING` | balance, ledger and top-ups |
 | `ROLES_SUPPORT` | product status, tickets, account info requests, read customers |
-| `ROLES_READ` | read-only across the board |
+| `ROLES_READ` | read-only across the board, unsold key codes included |
 
 **To give a role nothing but HWID resets, put it in `ROLES_HWID` and nowhere else.** That role
-can look up a key or customer to find who they are resetting, and clear the lock. It cannot see
-your balance, cannot buy, cannot refund.
+can look up a customer by id, username or a key they redeemed to find who they are resetting, and
+clear the lock. It cannot see your unsold keys or your balance, cannot buy, cannot refund.
 
 Every command is checked before it runs. A role that is not listed in any group gets nothing,
 so a leaked role never turns into spending power. `/whoami` shows a member exactly what they
@@ -123,6 +123,12 @@ You need a dmarebrands partner account. In the partner panel go to
 `DMAREBRANDS_API_KEY`. It is shown once and never again.
 
 Not a partner yet? Ask in the [dmarebrands](https://dmarebrands.st) store.
+
+If your account has more than one brand, set `BRAND_ID` to the id of the brand this bot works
+for. The [API](https://partners.dmarebrands.st/partners/api) page of the partner panel lists each
+brand with its `brand_id`. Keys, customers and tickets belong to one brand, while your balance,
+discount and top-ups are shared by all of them. Leave `BRAND_ID` empty to use your first brand,
+and run a second copy of the bot for a second brand. `/account` shows the brand the bot is using.
 
 An API key is your whole partner account and **it can spend your balance**. Treat the `.env`
 like a password file. If it leaks, revoke it in the panel. That takes effect on the next

@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ..formatting import BAD, BRAND, GOOD, WARN, embed, iso_stamp
+from ..formatting import BAD, BRAND, GOOD, WARN, embed, iso_stamp, newest
 from ..permissions import requires
 
 STATUS_TONE = {"open": WARN, "answered": GOOD, "resolved": GOOD, "closed": BRAND}
@@ -65,20 +65,29 @@ class Support(commands.Cog):
     async def read(self, interaction: discord.Interaction, ref: str) -> None:
         code = ref.strip().upper()
         t = await self.bot.partner_api.get_ticket(code)
-        if t.get("unread"):
+        messages = t.get("thread") or []
+        head = f"{t.get('status')} · {t.get('priority')} · {t.get('category')}"
+        thread, skipped, whole = newest(
+            [
+                f"**{m.get('author') or 'you' if m.get('role') == 'partner' else 'support'}** "
+                f"· {iso_stamp(m.get('created_at'))}\n{m.get('body')}"
+                for m in messages
+            ],
+            3900 - len(head),
+        )
+        own = max((i for i, m in enumerate(messages) if m.get("role") == "partner"), default=-1)
+        seen = whole and skipped <= own + 1
+        earlier = f"_{skipped} earlier message{'' if skipped == 1 else 's'} not shown._\n\n" if skipped else ""
+        view = embed(f"{t.get('ref')} · {t.get('subject')}", STATUS_TONE.get(t.get("status"), BRAND))
+        view.description = f"{head}\n\n{earlier}{thread or 'No messages yet.'}"
+        if not seen:
+            view.set_footer(text="Some replies are too long to show here. Read them in the partner panel.")
+        await interaction.edit_original_response(embed=view)
+        if t.get("unread") and seen:
             try:
                 await self.bot.partner_api.mark_ticket_read(code)
             except Exception:
                 pass
-        thread = "\n\n".join(
-            f"**{m.get('author') or 'you' if m.get('role') == 'partner' else 'support'}** "
-            f"· {iso_stamp(m.get('created_at'))}\n{m.get('body')}"
-            for m in (t.get("thread") or [])
-        )
-        view = embed(f"{t.get('ref')} · {t.get('subject')}", STATUS_TONE.get(t.get("status"), BRAND))
-        head = f"{t.get('status')} · {t.get('priority')} · {t.get('category')}"
-        view.description = f"{head}\n\n{thread or 'No messages yet.'}"[:4000]
-        await interaction.edit_original_response(embed=view)
 
     @group.command(name="open", description="Open a new ticket")
     @app_commands.choices(category=CATEGORY_CHOICES, priority=PRIORITY_CHOICES)

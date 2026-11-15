@@ -51,7 +51,9 @@ function seconds(header) {
 
 function part(value) {
   const text = String(value);
-  if (text === "" || text === "." || text === "..") throw new ApiError(404, "not_found", FRIENDLY.not_found);
+  if (text === "" || text === "." || text === ".." || /[/\\]/.test(text)) {
+    throw new ApiError(404, "not_found", FRIENDLY.not_found);
+  }
   return encodeURIComponent(text);
 }
 
@@ -65,9 +67,10 @@ function fileName(disposition) {
 }
 
 export class PartnerApi {
-  constructor({ apiKey, apiBase }) {
+  constructor({ apiKey, apiBase, brandId }) {
     this.apiKey = apiKey;
     this.apiBase = apiBase;
+    this.brandId = brandId ?? null;
     this.remaining = null;
     this.resetIn = null;
   }
@@ -88,15 +91,18 @@ export class PartnerApi {
     if (limitReset !== null) this.resetIn = Number(limitReset);
   }
 
-  async send(method, path, { query, body, idempotent = false, key } = {}) {
+  url(path, query) {
     const url = new URL(`${this.apiBase}${path}`);
-    if (query) {
-      for (const [name, value] of Object.entries(query)) {
-        if (value === undefined || value === null || value === "") continue;
-        url.searchParams.set(name, String(value));
-      }
+    if (this.brandId) url.searchParams.set("brand_id", this.brandId);
+    for (const [name, value] of Object.entries(query ?? {})) {
+      if (value === undefined || value === null || value === "") continue;
+      url.searchParams.set(name, String(value));
     }
+    return url;
+  }
 
+  async send(method, path, { query, body, idempotent = false, key } = {}) {
+    const url = this.url(path, query);
     const safe = method === "GET" || idempotent || Boolean(key);
     let lastError = null;
 
@@ -177,7 +183,7 @@ export class PartnerApi {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FILE_TIMEOUT_MS);
     try {
-      const res = await fetch(new URL(`${this.apiBase}${path}`), {
+      const res = await fetch(this.url(path), {
         headers: this.headers({ accept: "application/zip, application/json" }),
         signal: controller.signal,
       });
@@ -287,8 +293,10 @@ export class PartnerApi {
     return this.request("GET", `/customers/${part(ref)}`);
   }
 
-  customerKeys(ref) {
-    return this.request("GET", `/customers/${part(ref)}/keys`);
+  async customerKeys(ref) {
+    const result = await this.request("GET", `/customers/${part(ref)}/keys`);
+    if (!result.customer) throw new ApiError(404, "not_found", FRIENDLY.not_found);
+    return result;
   }
 
   resetByCustomer(ref, key) {

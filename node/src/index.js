@@ -83,10 +83,12 @@ client.once(Events.ClientReady, async (ready) => {
 
   try {
     const me = await api.me();
-    console.log(`Partner API connected as ${me.username} · balance $${me.balance_usd}`);
+    const name = me.brand?.name ? ` (${me.brand.name})` : "";
+    console.log(`Partner API connected as ${me.username} · brand ${me.brand?.id}${name} · balance $${me.balance_usd}`);
   } catch (err) {
-    console.error(`\nThe partner API rejected the bot's key: ${friendly(err)}`);
-    console.error("Fix DMAREBRANDS_API_KEY in your .env, then restart.\n");
+    const wrong = Boolean(config.brandId) && err instanceof ApiError && err.code === "not_found";
+    console.error(`\nThe partner API rejected the bot's ${wrong ? "BRAND_ID" : "key"}: ${friendly(err)}`);
+    console.error(`Fix ${wrong ? "BRAND_ID" : "DMAREBRANDS_API_KEY"} in your .env, then restart.\n`);
   }
 
   console.log(`Serving ${BY_NAME.size} commands in guild ${config.guildId}`);

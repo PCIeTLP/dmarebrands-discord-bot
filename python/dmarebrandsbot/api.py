@@ -52,7 +52,7 @@ class ApiError(Exception):
 
 def _part(value: Any) -> str:
     text = str(value)
-    if text in ("", ".", ".."):
+    if text in ("", ".", "..") or "/" in text or "\\" in text:
         raise ApiError(404, "not_found", FRIENDLY["not_found"])
     return quote(text, safe="")
 
@@ -112,9 +112,10 @@ def _error(status: int, text: str, request_id: str | None, retry_after: float | 
 
 
 class PartnerApi:
-    def __init__(self, api_key: str, api_base: str) -> None:
+    def __init__(self, api_key: str, api_base: str, brand_id: str | None = None) -> None:
         self.api_key = api_key
         self.api_base = api_base.rstrip("/")
+        self.brand_id = brand_id
         self._session: aiohttp.ClientSession | None = None
         self.remaining: int | None = None
         self.reset_in: int | None = None
@@ -142,6 +143,14 @@ class PartnerApi:
     def _url(self, path: str) -> URL:
         return URL(f"{URL(self.api_base)}{path}", encoded=True)
 
+    def _params(self, query: dict[str, Any] | None = None) -> dict[str, str]:
+        params = {"brand_id": self.brand_id} if self.brand_id else {}
+        for name, value in (query or {}).items():
+            if value is None or value == "":
+                continue
+            params[name] = str(value)
+        return params
+
     async def send(
         self,
         method: str,
@@ -152,12 +161,7 @@ class PartnerApi:
         idempotent: bool = False,
         key: str | None = None,
     ) -> dict[str, Any]:
-        params = {}
-        for name, value in (query or {}).items():
-            if value is None or value == "":
-                continue
-            params[name] = str(value)
-
+        params = self._params(query)
         headers = {"idempotency-key": key} if key else None
         safe = method == "GET" or idempotent or bool(key)
         session = await self.session()
@@ -222,6 +226,7 @@ class PartnerApi:
         session = await self.session()
         async with session.get(
             self._url(path),
+            params=self._params(),
             headers={"accept": "application/zip, application/json"},
             timeout=aiohttp.ClientTimeout(total=FILE_TIMEOUT_SECONDS),
         ) as res:
@@ -314,7 +319,10 @@ class PartnerApi:
         return await self.request("GET", f"/customers/{_part(ref)}")
 
     async def customer_keys(self, ref: int | str) -> dict[str, Any]:
-        return await self.request("GET", f"/customers/{_part(ref)}/keys")
+        result = await self.request("GET", f"/customers/{_part(ref)}/keys")
+        if not result.get("customer"):
+            raise ApiError(404, "not_found", FRIENDLY["not_found"])
+        return result
 
     async def reset_by_customer(self, ref: int | str, key: str | None = None) -> dict[str, Any]:
         return await self.request("POST", f"/customers/{_part(ref)}/reset-hwid", key=key)

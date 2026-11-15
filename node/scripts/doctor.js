@@ -1,7 +1,7 @@
 import { REST, Routes } from "discord.js";
 import { loadConfig } from "../src/config.js";
 import { COMMANDS, scopeFor } from "../src/commands/index.js";
-import { PartnerApi, friendly } from "../src/api.js";
+import { ApiError, PartnerApi, friendly } from "../src/api.js";
 import { GROUPS, SCOPES } from "../src/config.js";
 
 let problems = 0;
@@ -23,9 +23,10 @@ console.log("\nchecking the partner API");
 const api = new PartnerApi(config);
 try {
   const me = await api.me();
-  ok("API key works", `${me.username}, balance $${me.balance_usd}, ${me.discount_pct}% off`);
+  ok("API key works", `${me.username}, brand ${me.brand?.id}, balance $${me.balance_usd}, ${me.discount_pct}% off`);
 } catch (err) {
-  bad("API key rejected", friendly(err));
+  const wrong = Boolean(config.brandId) && err instanceof ApiError && err.code === "not_found";
+  bad(wrong ? "BRAND_ID rejected" : "API key rejected", friendly(err));
 }
 
 console.log("\nchecking Discord");

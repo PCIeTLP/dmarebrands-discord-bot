@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.3.2
+
+Accounts with more than one brand can pick the one the bot works for, and a few gaps around key
+codes and tickets are closed.
+
+- `BRAND_ID` in `.env` picks which of your brands the bot works for. Every request sends it as
+  `brand_id`, the account info zip download included. Leave it empty to keep using your first
+  brand. The startup log, the doctor script and `/account` show the brand in use, and a
+  `BRAND_ID` that is not one of your brands is reported as that instead of as a bad API key.
+- A key code, customer ref or ticket ref with a `/` or `\` in it no longer reaches a different
+  endpoint. The bot answers "Nothing matched that." without calling the API, and
+  `/customers keys` only lists keys when the API names the customer they belong to.
+- `ROLES_HWID` no longer grants `keys.read`, which let it see your unsold key codes in
+  `/keys list`. Resets look up the key or customer themselves, so `/hwid key`, `/hwid customer`
+  and `/customers` work as before. `/keys list`, `/keys info` and `/redemptions` now need
+  `ROLES_KEYS` or `ROLES_READ`.
+- `/tickets read` shows the newest messages of a long thread instead of the oldest, and says how
+  many earlier ones it left out. It marks the ticket read only once everything since your last
+  message is on screen in full. If a reply does not fit, the ticket stays unread and the bot
+  points you to the partner panel. Before, a long first message pushed the latest reply out of
+  view and the ticket was marked read anyway.
+- In the Python bot, coin autocomplete on `/topup start` checks `billing.topup` the way the
+  command does. Before, any member could make it call the API on every keystroke and use up the
+  rate limit your account shares.
+
+The commands themselves did not change, so upgrading is a pull and a restart.
+
 ## 2026-10-21
 
 Deadlock is public, so the bot covers it the way it covers Rust and Wardogs.

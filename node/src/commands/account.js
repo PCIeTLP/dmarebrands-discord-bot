@@ -21,6 +21,7 @@ export const account = {
       );
 
     if (me.brand?.store_url) view.setURL(me.brand.store_url);
+    if (me.brand?.id) view.setFooter({ text: `Brand id ${me.brand.id}` });
     await interaction.editReply({ embeds: [view] });
   },
 };
