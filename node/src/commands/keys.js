@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import { BAD, BRAND, GOOD, WARN, codeBlock, embed, isoStamp, money, stamp, stateLabel } from "../format.js";
+import { BAD, BRAND, GOOD, WARN, codeBlock, embed, isoStamp, keyLength, money, stamp, stateLabel } from "../format.js";
 import { confirm } from "../confirm.js";
 
 const FILTER_LABEL = {
@@ -19,7 +19,7 @@ const FILTERS = [
 function keyLine(key) {
   const owner = key.customer ? ` · ${key.customer.username}` : "";
   const expiry = key.expires_at ? ` · expires ${stamp(key.expires_at)}` : "";
-  return `\`${key.code}\` · ${stateLabel(key.state)} · ${key.days}d ${key.product}${owner}${expiry}`;
+  return `\`${key.code}\` · ${stateLabel(key.state)} · ${keyLength(key)} ${key.product}${owner}${expiry}`;
 }
 
 export const redemptions = {
@@ -49,7 +49,7 @@ export const redemptions = {
         rows
           .map(
             (r) =>
-              `\`${r.code}\` · ${r.days}d ${r.product} · **${r.customer?.username ?? "deleted account"}** · ${stamp(r.redeemed_at)}`
+              `\`${r.code}\` · ${keyLength(r)} ${r.product} · **${r.customer?.username ?? "deleted account"}** · ${stamp(r.redeemed_at)}`
           )
           .join("\n")
       )
@@ -240,7 +240,7 @@ async function keyInfo({ interaction, api }) {
 
   const view = embed(`Key ${key.code}`, BRAND).addFields(
     { name: "State", value: stateLabel(key.state), inline: true },
-    { name: "Product", value: `${key.days}d ${key.product}`, inline: true },
+    { name: "Product", value: `${keyLength(key)} ${key.product}`, inline: true },
     { name: "Cost", value: money(key.cost_usd), inline: true },
     { name: "Created", value: isoStamp(key.created_at), inline: true },
     { name: "Redeemed", value: key.redeemed_at ? stamp(key.redeemed_at) : "not yet", inline: true },
@@ -273,7 +273,7 @@ async function refundKey({ interaction, api, log }) {
   }
 
   const preview = embed("Confirm this refund", WARN).setDescription(
-    `\`${key.code}\` · ${key.days}d ${key.product}\n` +
+    `\`${key.code}\` · ${keyLength(key)} ${key.product}\n` +
       `This destroys the key and puts **${money(key.cost_usd)}** back on the balance.\n` +
       "It cannot be undone and the code will stop working immediately."
   );

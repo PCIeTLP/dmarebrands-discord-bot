@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from ..confirm import ask
-from ..formatting import BAD, BRAND, GOOD, WARN, code_block, embed, iso_stamp, money, stamp, state_label
+from ..formatting import BAD, BRAND, GOOD, WARN, code_block, embed, iso_stamp, key_length, money, stamp, state_label
 from ..permissions import requires
 
 FILTER_LABEL = {
@@ -29,7 +29,7 @@ def key_line(key: dict) -> str:
     expiry = f" · expires {stamp(key['expires_at'])}" if key.get("expires_at") else ""
     return (
         f"`{key['code']}` · {state_label(key.get('state'))} · "
-        f"{key.get('days')}d {key.get('product')}{owner}{expiry}"
+        f"{key_length(key)} {key.get('product')}{owner}{expiry}"
     )
 
 
@@ -151,7 +151,7 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
 
         view = embed(f"Key {key['code']}", BRAND)
         view.add_field(name="State", value=state_label(key.get("state")), inline=True)
-        view.add_field(name="Product", value=f"{key.get('days')}d {key.get('product')}", inline=True)
+        view.add_field(name="Product", value=f"{key_length(key)} {key.get('product')}", inline=True)
         view.add_field(name="Cost", value=money(key.get("cost_usd")), inline=True)
         view.add_field(name="Created", value=iso_stamp(key.get("created_at")), inline=True)
         view.add_field(
@@ -190,7 +190,7 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
 
         preview = embed("Confirm this refund", WARN)
         preview.description = (
-            f"`{key['code']}` · {key['days']}d {key['product']}\n"
+            f"`{key['code']}` · {key_length(key)} {key['product']}\n"
             f"This destroys the key and puts **{money(key.get('cost_usd'))}** back on the balance.\n"
             "It cannot be undone and the code will stop working immediately."
         )
@@ -236,7 +236,7 @@ class Redemptions(commands.Cog):
         for r in rows:
             who = (r.get("customer") or {}).get("username") or "deleted account"
             lines.append(
-                f"`{r.get('code')}` · {r.get('days')}d {r.get('product')} · **{who}** · {stamp(r.get('redeemed_at'))}"
+                f"`{r.get('code')}` · {key_length(r)} {r.get('product')} · **{who}** · {stamp(r.get('redeemed_at'))}"
             )
 
         view = embed("Latest redemptions", BRAND)

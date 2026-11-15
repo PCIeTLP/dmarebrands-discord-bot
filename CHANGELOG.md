@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.3.3
+
+Keys can now last hours or minutes as well as days, and the bot shows the real length.
+
+- Key lines in `/keys list`, `/keys info`, `/keys buy`, `/redemptions` and `/customers keys`
+  read the API's new `duration` field, so a one-hour key shows as `1h` instead of `0d`. Day keys
+  look the same as before. If the API is older and has no `duration`, the bot falls back to the
+  day count.
+
+The commands themselves did not change, so upgrading is a pull and a restart.
+
 ## v1.3.2
 
 Accounts with more than one brand can pick the one the bot works for, and a few gaps around key

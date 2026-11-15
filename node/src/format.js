@@ -83,3 +83,7 @@ export function clip(text, max) {
   const value = String(text ?? "");
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
+
+export function keyLength(key) {
+  return key?.duration || `${key?.days ?? 0}d`;
+}

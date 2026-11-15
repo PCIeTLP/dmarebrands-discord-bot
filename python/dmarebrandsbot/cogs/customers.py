@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from ..confirm import ask
-from ..formatting import BRAND, GOOD, WARN, embed, first_page, iso_stamp, stamp, state_label
+from ..formatting import BRAND, GOOD, WARN, embed, first_page, iso_stamp, key_length, stamp, state_label
 from ..permissions import requires
 
 
@@ -115,7 +115,7 @@ class Customers(
         for key in rows:
             expiry = f" · expires {stamp(key['expires_at'])}" if key.get("expires_at") else ""
             lines.append(
-                f"`{key.get('code')}` · {state_label(key.get('state'))} · {key.get('days')}d {key.get('product')}{expiry}"
+                f"`{key.get('code')}` · {state_label(key.get('state'))} · {key_length(key)} {key.get('product')}{expiry}"
             )
 
         view = embed(f"Keys for {who}", BRAND)

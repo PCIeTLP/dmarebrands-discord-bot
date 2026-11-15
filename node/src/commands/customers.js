@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import { BRAND, GOOD, WARN, chunk, embed, isoStamp, stamp, stateLabel } from "../format.js";
+import { BRAND, GOOD, WARN, chunk, embed, isoStamp, keyLength, stamp, stateLabel } from "../format.js";
 import { confirm } from "../confirm.js";
 
 function productLines(customer) {
@@ -86,7 +86,7 @@ async function customerKeys({ interaction, api }) {
 
   const lines = rows.map((key) => {
     const expiry = key.expires_at ? ` · expires ${stamp(key.expires_at)}` : "";
-    return `\`${key.code}\` · ${stateLabel(key.state)} · ${key.days}d ${key.product}${expiry}`;
+    return `\`${key.code}\` · ${stateLabel(key.state)} · ${keyLength(key)} ${key.product}${expiry}`;
   });
   const view = embed(`Keys for ${who}`, BRAND)
     .setDescription(chunk(lines)[0])

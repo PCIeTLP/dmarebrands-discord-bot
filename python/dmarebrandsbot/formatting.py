@@ -95,3 +95,6 @@ def newest(blocks: list[str], limit: int = 4000) -> tuple[str, int, bool]:
     if kept or not blocks:
         return text, len(blocks) - kept, True
     return clip(blocks[-1], limit), len(blocks) - 1, False
+
+def key_length(key: Any) -> str:
+    return str(key.get("duration") or f"{key.get('days', 0)}d")
