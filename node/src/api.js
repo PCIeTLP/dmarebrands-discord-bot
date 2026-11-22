@@ -18,7 +18,8 @@ export class ApiError extends Error {
 
 const FRIENDLY = {
   unauthorized: "The bot's API key was rejected. It may have been revoked.",
-  insufficient_balance: "Not enough balance on the partner account.",
+  insufficient_balance: "Not enough balance or credit on the partner account.",
+  invoice_due: "An invoice is due. Buying keys is paused until it is paid.",
   forbidden: "That partner account is no longer active.",
   not_found: "Nothing matched that.",
   conflict: "That is not possible in the current state.",
@@ -317,6 +318,19 @@ export class PartnerApi {
 
   getTopup(ref) {
     return this.request("GET", `/topups/${part(ref)}`);
+  }
+
+  invoices({ status, limit } = {}) {
+    return this.request("GET", "/invoices", { query: { status, limit } });
+  }
+
+  getInvoice(number) {
+    return this.request("GET", `/invoices/${part(number)}`);
+  }
+
+  payInvoice(number, coin, key, amountUsd) {
+    const body = amountUsd ? { coin, amount_usd: amountUsd } : { coin };
+    return this.request("POST", `/invoices/${part(number)}/pay`, { body, key });
   }
 
   listAccountInfo({ status, limit } = {}) {

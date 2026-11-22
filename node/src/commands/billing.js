@@ -6,28 +6,190 @@ const KIND_LABEL = {
   purchase: "Keys bought",
   refund: "Refund",
   adjust: "Adjustment",
+  payment: "Payment",
+  usage: "Keys used",
 };
+
+function dueLine(invoice) {
+  if (!invoice) return null;
+  const state = invoice.stock_locked
+    ? "unused credit keys are locked"
+    : invoice.overdue
+      ? "buying is paused"
+      : `due ${isoStamp(invoice.due_at)}`;
+  return `Invoice \`${invoice.number}\`: **${money(invoice.due_usd)}** still due, ${state}. Pay it with \`/invoice pay\`.`;
+}
 
 export const balance = {
   data: new SlashCommandBuilder()
     .setName("balance")
-    .setDescription("Show the partner balance and how to top it up"),
+    .setDescription("Show the partner balance or credit and how to pay"),
   scopes: "billing.read",
   async run({ interaction, api }) {
     const b = await api.balance();
+    const billing = b.billing ?? null;
+
+    if (billing?.mode === "credit") {
+      const view = embed("Monthly credit", billing.buying_paused ? WARN : BRAND)
+        .addFields(
+          { name: "Available", value: money(b.available_usd), inline: true },
+          { name: "Credit limit", value: money(billing.credit_limit_usd), inline: true },
+          { name: "Your discount", value: `${b.discount_pct}%`, inline: true },
+          { name: "Unused stock on credit", value: money(billing.stock_usd), inline: true },
+          { name: "Used, not paid yet", value: money(billing.used_unpaid_usd), inline: true },
+          {
+            name: "Next invoice",
+            value: billing.period_ends_at ? isoStamp(billing.period_ends_at) : "not scheduled",
+            inline: true,
+          }
+        )
+        .setDescription(
+          dueLine(billing.open_invoice) ??
+            "Keys are charged when a customer redeems them, on the invoice issued on the 1st of each month."
+        );
+      await interaction.editReply({ embeds: [view] });
+      return;
+    }
+
     const view = embed("Balance", BRAND)
       .addFields(
         { name: "Available", value: money(b.balance_usd), inline: true },
         { name: "Your discount", value: `${b.discount_pct}%`, inline: true }
       )
       .setDescription(
-        b.topup
-          ? `Top up between ${money(b.topup.min_usd)} and ${money(b.topup.max_usd)} at ${b.topup.url}`
-          : "Top up from the partner panel."
+        dueLine(billing?.open_invoice) ??
+          (b.topup
+            ? `Top up between ${money(b.topup.min_usd)} and ${money(b.topup.max_usd)} at ${b.topup.url}`
+            : "Top up from the partner panel.")
       );
     await interaction.editReply({ embeds: [view] });
   },
 };
+
+const INVOICE_STATE = {
+  open: "Unpaid",
+  paid: "Paid",
+};
+
+function invoiceState(inv) {
+  if (inv.status === "paid") return INVOICE_STATE.paid;
+  if (inv.stock_locked) return "Keys locked";
+  if (inv.overdue) return "Due";
+  return INVOICE_STATE.open;
+}
+
+function invoiceTone(inv) {
+  if (inv.status === "paid") return GOOD;
+  if (inv.stock_locked) return BAD;
+  return WARN;
+}
+
+function day(value) {
+  return value ? String(value).slice(0, 10) : "?";
+}
+
+function lastDay(value) {
+  const ms = Date.parse(value ?? "");
+  return Number.isNaN(ms) ? "?" : new Date(ms - 1000).toISOString().slice(0, 10);
+}
+
+export const invoice = {
+  data: new SlashCommandBuilder()
+    .setName("invoice")
+    .setDescription("Monthly credit invoices")
+    .addSubcommand((sub) => sub.setName("list").setDescription("Your recent invoices"))
+    .addSubcommand((sub) =>
+      sub
+        .setName("show")
+        .setDescription("One invoice with its lines")
+        .addStringOption((option) =>
+          option.setName("number").setDescription("The invoice number, like INV-202611-K7QD").setRequired(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("pay")
+        .setDescription("Open a payment for what is still due on an invoice")
+        .addStringOption((option) =>
+          option.setName("number").setDescription("The invoice number, like INV-202611-K7QD").setRequired(true)
+        )
+        .addStringOption((option) =>
+          option.setName("coin").setDescription("Which coin to pay with").setRequired(true).setAutocomplete(true)
+        )
+        .addNumberOption((option) =>
+          option.setName("amount").setDescription("Pay part of it, from 20. Leave empty to pay everything due").setMinValue(1)
+        )
+    ),
+
+  scopes: {
+    list: "billing.read",
+    show: "billing.read",
+    pay: "billing.topup",
+  },
+
+  async autocomplete(ctx) {
+    return topup.autocomplete(ctx);
+  },
+
+  async run(ctx) {
+    const sub = ctx.interaction.options.getSubcommand();
+    if (sub === "pay") return payInvoice(ctx);
+    if (sub === "show") return showInvoice(ctx);
+    return listInvoices(ctx);
+  },
+};
+
+async function listInvoices({ interaction, api }) {
+  const result = await api.invoices({ limit: 12 });
+  const rows = result.data ?? [];
+  if (!rows.length) {
+    await interaction.editReply({ content: "No invoices yet." });
+    return;
+  }
+  const view = embed("Invoices", BRAND).setDescription(
+    rows
+      .map(
+        (inv) =>
+          `\`${inv.number}\` · ${day(inv.period_start)} to ${lastDay(inv.period_end)} · ${money(inv.amount_usd)} · ${invoiceState(inv)}${
+            inv.status === "open" ? ` · ${money(inv.due_usd)} due` : ""
+          }`
+      )
+      .join("\n")
+  );
+  await interaction.editReply({ embeds: [view] });
+}
+
+async function showInvoice({ interaction, api }) {
+  const number = interaction.options.getString("number", true).trim().toUpperCase();
+  const inv = await api.getInvoice(number);
+  const used = (inv.lines ?? []).filter((line) => line.kind === "usage");
+  const view = embed(`Invoice ${inv.number}`, invoiceTone(inv))
+    .addFields(
+      { name: "Amount", value: money(inv.amount_usd), inline: true },
+      { name: "Paid", value: money(inv.paid_usd), inline: true },
+      { name: "Still due", value: money(inv.due_usd), inline: true },
+      { name: "Period", value: `${day(inv.period_start)} to ${lastDay(inv.period_end)}`, inline: true },
+      { name: "State", value: invoiceState(inv), inline: true },
+      { name: "Due", value: isoStamp(inv.due_at), inline: true }
+    )
+    .setDescription(
+      used.length
+        ? used
+            .map((line) => `${line.qty} × ${line.duration ?? ""} ${line.product ?? ""} at ${money(line.unit_usd)} · ${money(Math.abs(line.amount_usd))}`)
+            .join("\n")
+        : "No keys used in this period."
+    );
+  await interaction.editReply({ embeds: [view] });
+}
+
+async function payInvoice({ interaction, api, log }) {
+  const number = interaction.options.getString("number", true).trim().toUpperCase();
+  const coin = interaction.options.getString("coin", true).trim().toLowerCase();
+  const amount = interaction.options.getNumber("amount");
+  const t = await api.payInvoice(number, coin, `discord:${interaction.id}`, amount ? Math.round(amount * 100) / 100 : null);
+  await interaction.editReply({ embeds: [topupView(t, `Payment for ${number}`).setDescription(payment(t))] });
+  await log(`**${interaction.user.tag}** opened a ${money(t.amount_usd)} payment for invoice ${number}`);
+}
 
 export const ledger = {
   data: new SlashCommandBuilder()

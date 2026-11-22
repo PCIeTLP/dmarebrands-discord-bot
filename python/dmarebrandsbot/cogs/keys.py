@@ -106,12 +106,24 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
         total = round(float(chosen["your_price_usd"]) * count, 2)
         balance = await self.bot.partner_api.balance()
         available = float(balance.get("balance_usd") or 0)
+        billing = balance.get("billing") or {}
+        on_credit = billing.get("mode") == "credit"
+        due = billing.get("open_invoice")
+
+        if billing.get("buying_paused") and due:
+            view = embed("Buying is paused", BAD)
+            view.description = (
+                f"Invoice `{due.get('number')}` has **{money(due.get('due_usd'))}** still due. "
+                "Pay it with `/invoice pay` to buy keys again."
+            )
+            await interaction.edit_original_response(embed=view)
+            return
 
         if available < total:
-            view = embed("Not enough balance", BAD)
+            view = embed("Not enough credit" if on_credit else "Not enough balance", BAD)
             view.description = (
                 f"{count} × {chosen['label']} costs {money(total)} but the account "
-                f"only has {money(available)}."
+                f"only has {money(available)}{' of credit left' if on_credit else ''}."
             )
             await interaction.edit_original_response(embed=view)
             return
@@ -119,11 +131,13 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
         preview = embed("Confirm this purchase", WARN)
         preview.description = (
             f"**{count} × {chosen['label']}** ({chosen['days']} days)\n"
-            f"{money(chosen['your_price_usd'])} each · **{money(total)}** total\n"
-            f"Balance after: {money(available - total)}"
+            f"{money(chosen['your_price_usd'])} each · **{money(total)}** total"
+            f"{', charged when each key is redeemed' if on_credit else ''}\n"
+            f"{'Credit left after' if on_credit else 'Balance after'}: {money(available - total)}"
         )
 
-        if not await ask(interaction, preview, confirm_label=f"Buy for {money(total)}"):
+        label = f"Buy on credit, {money(total)}" if on_credit else f"Buy for {money(total)}"
+        if not await ask(interaction, preview, confirm_label=label):
             cancelled = embed("Cancelled", BRAND)
             cancelled.description = "No keys were bought."
             await interaction.edit_original_response(embed=cancelled, view=None)
@@ -132,14 +146,21 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
         bought = await self.bot.partner_api.buy_keys(plan, count, f"discord:{interaction.id}")
         codes = [key["code"] for key in bought.get("data") or []]
 
-        done = embed(f"Bought {len(codes)} key{'' if len(codes) == 1 else 's'}", GOOD)
+        took = bool(bought.get("on_credit"))
+        done = embed(f"{'Took' if took else 'Bought'} {len(codes)} key{'' if len(codes) == 1 else 's'}", GOOD)
         done.description = code_block("\n".join(codes))
-        done.add_field(name="Spent", value=money(bought.get("spent_usd")), inline=True)
-        done.add_field(name="Balance", value=money(bought.get("balance_usd")), inline=True)
+        if took:
+            done.add_field(name="On credit", value=money(total), inline=True)
+            done.add_field(name="Credit left", value=money(bought.get("balance_usd")), inline=True)
+        else:
+            done.add_field(name="Spent", value=money(bought.get("spent_usd")), inline=True)
+            done.add_field(name="Balance", value=money(bought.get("balance_usd")), inline=True)
 
         await interaction.edit_original_response(embed=done, view=None)
         await self.bot.log_action(
-            f"**{interaction.user}** bought {len(codes)} × {chosen['label']} "
+            f"**{interaction.user}** took {len(codes)} × {chosen['label']} on credit ({money(total)})"
+            if took
+            else f"**{interaction.user}** bought {len(codes)} × {chosen['label']} "
             f"for {money(bought.get('spent_usd'))}"
         )
 
@@ -188,30 +209,41 @@ class Keys(commands.GroupCog, name="keys", description="Buy, inspect and refund 
             await interaction.edit_original_response(embed=view)
             return
 
-        preview = embed("Confirm this refund", WARN)
+        credit = bool(key.get("credit"))
+        preview = embed("Confirm this return" if credit else "Confirm this refund", WARN)
         preview.description = (
             f"`{key['code']}` · {key_length(key)} {key['product']}\n"
-            f"This destroys the key and puts **{money(key.get('cost_usd'))}** back on the balance.\n"
-            "It cannot be undone and the code will stop working immediately."
+            + (
+                f"This destroys the key and frees **{money(key.get('cost_usd'))}** of credit. "
+                "It was never charged, so no money moves.\n"
+                if credit
+                else f"This destroys the key and puts **{money(key.get('cost_usd'))}** back on the balance.\n"
+            )
+            + "It cannot be undone and the code will stop working immediately."
         )
 
-        if not await ask(
-            interaction, preview, confirm_label=f"Refund {money(key.get('cost_usd'))}", danger=True
-        ):
+        label = "Return key" if credit else f"Refund {money(key.get('cost_usd'))}"
+        if not await ask(interaction, preview, confirm_label=label, danger=True):
             cancelled = embed("Cancelled", BRAND)
             cancelled.description = "The key was left alone."
             await interaction.edit_original_response(embed=cancelled, view=None)
             return
 
         result = await self.bot.partner_api.refund_key(clean, key=f"discord:{interaction.id}")
-        done = embed("Refunded", GOOD)
-        done.description = f"`{result['code']}` is gone."
-        done.add_field(name="Returned", value=money(result.get("refunded_usd")), inline=True)
-        done.add_field(name="Balance", value=money(result.get("balance_usd")), inline=True)
+        if result.get("returned"):
+            done = embed("Returned", GOOD)
+            done.description = f"`{result['code']}` is gone and its credit is free again."
+        else:
+            done = embed("Refunded", GOOD)
+            done.description = f"`{result['code']}` is gone."
+            done.add_field(name="Returned", value=money(result.get("refunded_usd")), inline=True)
+            done.add_field(name="Balance", value=money(result.get("balance_usd")), inline=True)
 
         await interaction.edit_original_response(embed=done, view=None)
         await self.bot.log_action(
-            f"**{interaction.user}** refunded `{result['code']}` for {money(result.get('refunded_usd'))}"
+            f"**{interaction.user}** returned `{result['code']}` to credit"
+            if result.get("returned")
+            else f"**{interaction.user}** refunded `{result['code']}` for {money(result.get('refunded_usd'))}"
         )
 
 

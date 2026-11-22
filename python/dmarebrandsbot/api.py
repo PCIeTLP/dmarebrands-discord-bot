@@ -18,7 +18,8 @@ LONGEST_RETRY_SECONDS = 30
 
 FRIENDLY = {
     "unauthorized": "The bot's API key was rejected. It may have been revoked.",
-    "insufficient_balance": "Not enough balance on the partner account.",
+    "insufficient_balance": "Not enough balance or credit on the partner account.",
+    "invoice_due": "An invoice is due. Buying keys is paused until it is paid.",
     "forbidden": "That partner account is no longer active.",
     "not_found": "Nothing matched that.",
     "conflict": "That is not possible in the current state.",
@@ -338,6 +339,20 @@ class PartnerApi:
 
     async def get_topup(self, ref: str) -> dict[str, Any]:
         return await self.request("GET", f"/topups/{_part(ref)}")
+
+    async def invoices(self, *, status: str | None = None, limit: int | None = None) -> dict[str, Any]:
+        return await self.request("GET", "/invoices", query={"status": status, "limit": limit})
+
+    async def get_invoice(self, number: str) -> dict[str, Any]:
+        return await self.request("GET", f"/invoices/{_part(number)}")
+
+    async def pay_invoice(
+        self, number: str, coin: str, key: str | None = None, amount_usd: float | None = None
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"coin": coin}
+        if amount_usd:
+            body["amount_usd"] = amount_usd
+        return await self.request("POST", f"/invoices/{_part(number)}/pay", body=body, key=key)
 
     async def list_account_info(self, *, status: str | None = None, limit: int | None = None) -> dict[str, Any]:
         return await self.request("GET", "/account-info", query={"status": status, "limit": limit})

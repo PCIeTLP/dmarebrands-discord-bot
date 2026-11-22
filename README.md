@@ -28,11 +28,14 @@ There is a [Telegram version](https://github.com/PCIeTLP/dmarebrands-telegram-bo
 | `/account` | Partner account, brand and headline numbers | `account.read` |
 | `/plans` | Every plan with your discounted price | `account.read` |
 | `/stats` | Keys, customers, who is online and the last 7 days | `account.read` |
-| `/balance` | Available balance and how to top up | `billing.read` |
+| `/balance` | Available balance or credit, and how to pay | `billing.read` |
 | `/ledger [limit]` | Recent movements on the balance | `billing.read` |
 | `/topup start <amount> <coin>` | Open a crypto payment for your balance | `billing.topup` |
 | `/topup status <ref>` | Where a top-up stands | `billing.read` |
 | `/topup list` | Your recent top-ups | `billing.read` |
+| `/invoice list` | Your monthly credit invoices | `billing.read` |
+| `/invoice show <number>` | One invoice with the keys used on it | `billing.read` |
+| `/invoice pay <number> <coin> [amount]` | Open a crypto payment for what is still due | `billing.topup` |
 | `/keys list [filter] [search] [limit]` | Keys you have issued | `keys.read` |
 | `/keys buy <plan> [count]` | Mint new keys against your balance | `keys.buy` |
 | `/keys info <code>` | One key, including who redeemed it | `keys.read` |

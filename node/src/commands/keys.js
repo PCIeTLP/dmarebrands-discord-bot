@@ -189,14 +189,27 @@ async function buyKeys({ interaction, api, log }) {
 
   const total = Math.round(chosen.your_price_usd * count * 100) / 100;
   const balance = await api.balance();
+  const onCredit = balance.billing?.mode === "credit";
+  const due = balance.billing?.open_invoice;
+
+  if (balance.billing?.buying_paused && due) {
+    await interaction.editReply({
+      embeds: [
+        embed("Buying is paused", BAD).setDescription(
+          `Invoice \`${due.number}\` has **${money(due.due_usd)}** still due. Pay it with \`/invoice pay\` to buy keys again.`
+        ),
+      ],
+    });
+    return;
+  }
 
   if (Number(balance.balance_usd) < total) {
     await interaction.editReply({
       embeds: [
-        embed("Not enough balance", BAD).setDescription(
+        embed(onCredit ? "Not enough credit" : "Not enough balance", BAD).setDescription(
           `${count} × ${chosen.label} costs ${money(total)} but the account only has ${money(
             balance.balance_usd
-          )}.`
+          )}${onCredit ? " of credit left" : ""}.`
         ),
       ],
     });
@@ -205,11 +218,14 @@ async function buyKeys({ interaction, api, log }) {
 
   const preview = embed("Confirm this purchase", WARN).setDescription(
     `**${count} × ${chosen.label}** (${chosen.days} days)\n` +
-      `${money(chosen.your_price_usd)} each · **${money(total)}** total\n` +
-      `Balance after: ${money(Number(balance.balance_usd) - total)}`
+      `${money(chosen.your_price_usd)} each · **${money(total)}** total${onCredit ? ", charged when each key is redeemed" : ""}\n` +
+      `${onCredit ? "Credit left after" : "Balance after"}: ${money(Number(balance.balance_usd) - total)}`
   );
 
-  const go = await confirm(interaction, { view: preview, confirmLabel: `Buy for ${money(total)}` });
+  const go = await confirm(interaction, {
+    view: preview,
+    confirmLabel: onCredit ? `Buy on credit, ${money(total)}` : `Buy for ${money(total)}`,
+  });
   if (!go) {
     await interaction.editReply({
       embeds: [embed("Cancelled", BRAND).setDescription("No keys were bought.")],
@@ -221,16 +237,20 @@ async function buyKeys({ interaction, api, log }) {
   const bought = await api.buyKeys(plan, count, `discord:${interaction.id}`);
   const codes = (bought.data ?? []).map((k) => k.code);
 
-  const done = embed(`Bought ${codes.length} key${codes.length === 1 ? "" : "s"}`, GOOD)
+  const done = embed(`${bought.on_credit ? "Took" : "Bought"} ${codes.length} key${codes.length === 1 ? "" : "s"}`, GOOD)
     .setDescription(codeBlock(codes.join("\n")))
     .addFields(
-      { name: "Spent", value: money(bought.spent_usd), inline: true },
-      { name: "Balance", value: money(bought.balance_usd), inline: true }
+      bought.on_credit
+        ? { name: "On credit", value: money(total), inline: true }
+        : { name: "Spent", value: money(bought.spent_usd), inline: true },
+      { name: bought.on_credit ? "Credit left" : "Balance", value: money(bought.balance_usd), inline: true }
     );
 
   await interaction.editReply({ embeds: [done], components: [] });
   await log(
-    `**${interaction.user.tag}** bought ${codes.length} × ${chosen.label} for ${money(bought.spent_usd)}`
+    bought.on_credit
+      ? `**${interaction.user.tag}** took ${codes.length} × ${chosen.label} on credit (${money(total)})`
+      : `**${interaction.user.tag}** bought ${codes.length} × ${chosen.label} for ${money(bought.spent_usd)}`
   );
 }
 
@@ -272,15 +292,17 @@ async function refundKey({ interaction, api, log }) {
     return;
   }
 
-  const preview = embed("Confirm this refund", WARN).setDescription(
+  const preview = embed(key.credit ? "Confirm this return" : "Confirm this refund", WARN).setDescription(
     `\`${key.code}\` · ${keyLength(key)} ${key.product}\n` +
-      `This destroys the key and puts **${money(key.cost_usd)}** back on the balance.\n` +
+      (key.credit
+        ? `This destroys the key and frees **${money(key.cost_usd)}** of credit. It was never charged, so no money moves.\n`
+        : `This destroys the key and puts **${money(key.cost_usd)}** back on the balance.\n`) +
       "It cannot be undone and the code will stop working immediately."
   );
 
   const go = await confirm(interaction, {
     view: preview,
-    confirmLabel: `Refund ${money(key.cost_usd)}`,
+    confirmLabel: key.credit ? "Return key" : `Refund ${money(key.cost_usd)}`,
     danger: true,
   });
   if (!go) {
@@ -292,13 +314,19 @@ async function refundKey({ interaction, api, log }) {
   }
 
   const result = await api.refundKey(code, `discord:${interaction.id}`);
-  const done = embed("Refunded", GOOD)
-    .setDescription(`\`${result.code}\` is gone.`)
-    .addFields(
-      { name: "Returned", value: money(result.refunded_usd), inline: true },
-      { name: "Balance", value: money(result.balance_usd), inline: true }
-    );
+  const done = result.returned
+    ? embed("Returned", GOOD).setDescription(`\`${result.code}\` is gone and its credit is free again.`)
+    : embed("Refunded", GOOD)
+        .setDescription(`\`${result.code}\` is gone.`)
+        .addFields(
+          { name: "Returned", value: money(result.refunded_usd), inline: true },
+          { name: "Balance", value: money(result.balance_usd), inline: true }
+        );
 
   await interaction.editReply({ embeds: [done], components: [] });
-  await log(`**${interaction.user.tag}** refunded \`${result.code}\` for ${money(result.refunded_usd)}`);
+  await log(
+    result.returned
+      ? `**${interaction.user.tag}** returned \`${result.code}\` to credit`
+      : `**${interaction.user.tag}** refunded \`${result.code}\` for ${money(result.refunded_usd)}`
+  );
 }

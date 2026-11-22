@@ -1,5 +1,5 @@
 import { account, domains, plans, stats, whoami } from "./account.js";
-import { balance, ledger, topup } from "./billing.js";
+import { balance, invoice, ledger, topup } from "./billing.js";
 import { keys, redemptions } from "./keys.js";
 import { customers, hwid, online } from "./customers.js";
 import { changelog, status, updates } from "./status.js";
@@ -15,6 +15,7 @@ export const COMMANDS = [
   balance,
   ledger,
   topup,
+  invoice,
   keys,
   redemptions,
   customers,
